@@ -1,0 +1,43 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <title>Foro de Trabajos</title>
+  <link rel="stylesheet" href="css/styles.css">
+</head>
+
+<body>
+
+<div class="navbar">
+  <h3>💼 Foro</h3>
+  <div>
+    <a href="login.html">Login</a>
+    <a href="register.html">Registro</a>
+    <a href="post.html">Publicar</a>
+  </div>
+</div>
+
+<div class="container fade-in">
+  <h2>Publicaciones</h2>
+  <div id="posts"></div>
+</div>
+
+<script>
+fetch("http://localhost:3000/posts")
+.then(res => res.json())
+.then(data => {
+  const container = document.getElementById("posts");
+
+  data.forEach(post => {
+    container.innerHTML += `
+      <div class="card">
+        <h3>${post.title}</h3>
+        <p>${post.description}</p>
+        <img src="http://localhost:3000/uploads/${post.media}" width="100%">
+      </div>
+    `;
+  });
+});
+</script>
+
+</body>
+</html>
