@@ -11,9 +11,11 @@ app.use(cors());
 app.use("/uploads", express.static("uploads"));
 
 // 🔌 CONEXIÓN A MONGODB
-mongoose.connect("mongodb://precise:12345@ac-x6thvju-shard-00-00.2ixhved.mongodb.net:27017,ac-x6thvju-shard-00-01.2ixhved.mongodb.net:27017,ac-x6thvju-shard-00-02.2ixhved.mongodb.net:27017/?ssl=true&replicaSet=atlas-jlzj9h-shard-0&authSource=admin&appName=prueba")
-.then(() => console.log("🔥 Conectado a MongoDB"))
-.catch(err => console.log("❌ Error:", err));
+require("dotenv").config();
+
+mongoose.connect(process.env.MONGO_URI)
+.then(() => console.log("Conectado a MongoDB"))
+.catch(err => console.log(err));
 // 📦 MODELOS
 const User = mongoose.model("User", {
   username: String,
@@ -91,5 +93,7 @@ app.post("/message", async (req, res) => {
   await msg.save();
   res.send("Mensaje enviado");
 });
-
+app.get("/", (req, res) => {
+  res.send("🚀 Servidor funcionando correctamente");
+});
 app.listen(3000, () => console.log("Servidor en puerto 3000"));
