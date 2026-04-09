@@ -61,9 +61,14 @@ app.post("/login", async (req, res) => {
   const token = jwt.sign({ id: user._id }, "secreto");
   res.json({ token, user });
 });
+const fs = require("fs");
 
+if (!fs.existsSync("uploads")) {
+  fs.mkdirSync("uploads");
+}
 // 📂 SUBIDA DE ARCHIVOS
 const storage = multer.diskStorage({
+
   destination: "uploads/",
   filename: (req, file, cb) => {
     cb(null, Date.now() + file.originalname);
@@ -76,7 +81,7 @@ app.post("/post", upload.single("media"), async (req, res) => {
   const post = new Post({
     title: req.body.title,
     description: req.body.description,
-    media: req.file.filename,
+    media: req.file ? req.file.filename : null,
     userId: req.body.userId
   });
   await post.save();
@@ -96,6 +101,8 @@ app.post("/message", async (req, res) => {
   res.send("Mensaje enviado");
 });
 app.get("/", (req, res) => {
-  res.send("🚀 Servidor funcionando correctamente");
+  res.sendFile(path.join(__dirname, "public", "index.html"));
 });
-app.listen(3000, () => console.log("Servidor en puerto 3000"));
+app.listen(process.env.PORT || 3000, () => 
+  console.log("Servidor corriendo")
+);
