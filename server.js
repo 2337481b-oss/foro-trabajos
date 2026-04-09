@@ -8,6 +8,8 @@ const bcrypt = require("bcryptjs");
 const jwt = require("jsonwebtoken");
 const { CloudinaryStorage } = require("multer-storage-cloudinary");
 const cloudinary = require("cloudinary").v2;
+
+// ☁️ CONFIGURACIÓN DE CLOUDINARY
 cloudinary.config({
   cloud_name: process.env.CLOUD_NAME,
   api_key: process.env.API_KEY,
@@ -18,14 +20,12 @@ const app = express();
 app.use(express.json());
 app.use(cors());
 app.use(express.static(path.join(__dirname, "public")));
-//app.use("/uploads", express.static("uploads"));
 
 // 🔌 CONEXIÓN A MONGODB
-require("dotenv").config();
-
 mongoose.connect(process.env.MONGO_URI)
 .then(() => console.log("Conectado a MongoDB"))
 .catch(err => console.log(err));
+
 // 📦 MODELOS
 const User = mongoose.model("User", {
   username: String,
@@ -46,19 +46,28 @@ const Message = mongoose.model("Message", {
   content: String
 });
 
-// 🔐 REGISTRO
+// 🔐 REGISTRO (Corregido el orden de validación)
 app.post("/register", async (req, res) => {
-  const hashed = await bcrypt.hash(req.body.password, 10);
-  const user = new User({
-    username: req.body.username,
-    email: req.body.email,
-    password: hashed
-  });
+  // 1. Validar que vengan los datos antes de hacer nada más
   if (!req.body.email || !req.body.password) {
-  return res.status(400).send("Datos incompletos");
-}
-  await user.save();
-  res.send("Usuario registrado");
+    return res.status(400).send("Datos incompletos");
+  }
+
+  try {
+    // 2. Encriptar contraseña y guardar usuario
+    const hashed = await bcrypt.hash(req.body.password, 10);
+    const user = new User({
+      username: req.body.username,
+      email: req.body.email,
+      password: hashed
+    });
+    
+    await user.save();
+    res.send("Usuario registrado");
+  } catch (error) {
+    console.log(error);
+    res.status(500).send("Error al registrar usuario");
+  }
 });
 
 // 🔑 LOGIN
@@ -84,14 +93,13 @@ const storage = new CloudinaryStorage({
 
 const upload = multer({ storage });
 
-// 📝 CREAR PUBLICACIÓN
 // 📝 CREAR PUBLICACIÓN (Cloudinary)
 app.post("/post", upload.single("media"), async (req, res) => {
   try {
     const post = new Post({
       title: req.body.title,
       description: req.body.description,
-      media: req.file ? req.file.path : null, // 👈 CAMBIO CLAVE
+      media: req.file ? req.file.path : null,
       userId: req.body.userId
     });
 
@@ -115,9 +123,11 @@ app.post("/message", async (req, res) => {
   await msg.save();
   res.send("Mensaje enviado");
 });
+
 app.get("/", (req, res) => {
   res.sendFile(path.join(__dirname, "public", "index.html"));
 });
+
 app.listen(process.env.PORT || 3000, () => 
   console.log("Servidor corriendo")
 );
