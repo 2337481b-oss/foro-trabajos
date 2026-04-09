@@ -22,7 +22,7 @@
 </div>
 
 <script>
-fetch("http://localhost:3000/posts")
+fetch("https://foro-trabajos.onrender.com/posts")
 .then(res => res.json())
 .then(data => {
   const container = document.getElementById("posts");
@@ -32,7 +32,7 @@ fetch("http://localhost:3000/posts")
       <div class="card">
         <h3>${post.title}</h3>
         <p>${post.description}</p>
-        <img src="http://localhost:3000/uploads/${post.media}" width="100%">
+        <img src="https://foro-trabajos.onrender.com/uploads/...">
       </div>
     `;
   });
