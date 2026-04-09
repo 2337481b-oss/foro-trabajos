@@ -5,6 +5,13 @@ const path = require("path");
 const multer = require("multer");
 const bcrypt = require("bcryptjs");
 const jwt = require("jsonwebtoken");
+const { CloudinaryStorage } = require("multer-storage-cloudinary");
+const cloudinary = require("cloudinary").v2;
+cloudinary.config({
+  cloud_name: process.env.CLOUD_NAME,
+  api_key: process.env.API_KEY,
+  api_secret: process.env.API_SECRET
+});
 
 const app = express();
 app.use(express.json());
@@ -70,28 +77,33 @@ if (!fs.existsSync("uploads")) {
   fs.mkdirSync("uploads");
 }
 // 📂 SUBIDA DE ARCHIVOS
-const storage = multer.diskStorage({
-
-  destination: "uploads/",
-  filename: (req, file, cb) => {
-    cb(null, Date.now() + file.originalname);
+const storage = new CloudinaryStorage({
+  cloudinary: cloudinary,
+  params: {
+    folder: "foro-trabajos",
+    allowed_formats: ["jpg", "png", "jpeg"]
   }
 });
+
 const upload = multer({ storage });
 
 // 📝 CREAR PUBLICACIÓN
+// 📝 CREAR PUBLICACIÓN (Cloudinary)
 app.post("/post", upload.single("media"), async (req, res) => {
-  console.log("Archivo:", req.file);
+  try {
+    const post = new Post({
+      title: req.body.title,
+      description: req.body.description,
+      media: req.file ? req.file.path : null, // 👈 CAMBIO CLAVE
+      userId: req.body.userId
+    });
 
-  const post = new Post({
-    title: req.body.title,
-    description: req.body.description,
-    media: req.file ? req.file.filename : null,
-    userId: req.body.userId
-  });
-
-  await post.save();
-  res.send("Publicación creada");
+    await post.save();
+    res.send("Publicación creada");
+  } catch (err) {
+    console.log(err);
+    res.status(500).send("Error al publicar");
+  }
 });
 
 // 📄 VER PUBLICACIONES

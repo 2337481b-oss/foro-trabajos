@@ -32,7 +32,7 @@ fetch("https://foro-trabajos.onrender.com/posts")
       <div class="card">
         <h3>${post.title}</h3>
         <p>${post.description}</p>
-        <img src="https://foro-trabajos.onrender.com/uploads/${post.media}">
+        <img src="${post.media}" width="100%">
       </div>
     `;
   });
