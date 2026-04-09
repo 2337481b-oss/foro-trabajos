@@ -46,6 +46,9 @@ app.post("/register", async (req, res) => {
     email: req.body.email,
     password: hashed
   });
+  if (!req.body.email || !req.body.password) {
+  return res.status(400).send("Datos incompletos");
+}
   await user.save();
   res.send("Usuario registrado");
 });

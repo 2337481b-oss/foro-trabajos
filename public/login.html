@@ -18,19 +18,38 @@
 
 <script>
 function login(){
+
+  const emailInput = document.getElementById("email");
+  const passwordInput = document.getElementById("password");
+
+  if (!emailInput.value || !passwordInput.value) {
+    alert("Completa todos los campos");
+    return;
+  }
+
   fetch("https://foro-trabajos.onrender.com/login", {
     method:"POST",
     headers:{"Content-Type":"application/json"},
     body: JSON.stringify({
-      email: email.value,
-      password: password.value
+      email: emailInput.value,
+      password: passwordInput.value
     })
   })
   .then(res => res.json())
   .then(data => {
+
+    if (!data.user) {
+      alert(data);
+      return;
+    }
+
     localStorage.setItem("userId", data.user._id);
     alert("Login exitoso");
     window.location.href = "index.html";
+  })
+  .catch(err => {
+    console.log(err);
+    alert("Error en el login");
   });
 }
 </script>
