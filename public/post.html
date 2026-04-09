@@ -24,24 +24,13 @@ function upload(){
   const descInput = document.getElementById("description");
   const mediaInput = document.getElementById("media");
 
-  const userId = localStorage.getItem("userId");
-
-  if (!userId) {
-    alert("Debes iniciar sesión");
-    return;
-  }
-
-  if (!titleInput.value || !descInput.value) {
-    alert("Completa todos los campos");
-    return;
-  }
-
   const formData = new FormData();
 
   formData.append("title", titleInput.value);
   formData.append("description", descInput.value);
-  formData.append("userId", userId);
+  formData.append("userId", localStorage.getItem("userId"));
 
+  // 👇 CLAVE
   if (mediaInput.files.length > 0) {
     formData.append("media", mediaInput.files[0]);
   }
@@ -57,10 +46,7 @@ function upload(){
   })
   .catch(err => {
     console.log(err);
-    alert("Error al publicar");
+    alert("Error al subir");
   });
 }
 </script>
-
-</body>
-</html>
