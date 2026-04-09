@@ -81,12 +81,15 @@ const upload = multer({ storage });
 
 // 📝 CREAR PUBLICACIÓN
 app.post("/post", upload.single("media"), async (req, res) => {
+  console.log("Archivo:", req.file);
+
   const post = new Post({
     title: req.body.title,
     description: req.body.description,
     media: req.file ? req.file.filename : null,
     userId: req.body.userId
   });
+
   await post.save();
   res.send("Publicación creada");
 });
