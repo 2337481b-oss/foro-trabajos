@@ -1,3 +1,4 @@
+require("dotenv").config();
 const express = require("express");
 const mongoose = require("mongoose");
 const cors = require("cors");
@@ -17,7 +18,7 @@ const app = express();
 app.use(express.json());
 app.use(cors());
 app.use(express.static(path.join(__dirname, "public")));
-app.use("/uploads", express.static("uploads"));
+//app.use("/uploads", express.static("uploads"));
 
 // 🔌 CONEXIÓN A MONGODB
 require("dotenv").config();
@@ -71,11 +72,7 @@ app.post("/login", async (req, res) => {
   const token = jwt.sign({ id: user._id }, "secreto");
   res.json({ token, user });
 });
-const fs = require("fs");
 
-if (!fs.existsSync("uploads")) {
-  fs.mkdirSync("uploads");
-}
 // 📂 SUBIDA DE ARCHIVOS
 const storage = new CloudinaryStorage({
   cloudinary: cloudinary,
