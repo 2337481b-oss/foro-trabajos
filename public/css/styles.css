@@ -42,17 +42,17 @@ body {
 .card {
   background: #1e293b;
   padding: 15px;
-  border-radius: 10px;
+  border-radius: 12px;
   margin-bottom: 15px;
-  transition: transform 0.3s, box-shadow 0.3s;
+  transition: transform 0.25s, box-shadow 0.25s;
 }
 
 .card:hover {
-  transform: scale(1.02);
-  box-shadow: 0 0 15px rgba(0,0,0,0.5);
+  transform: scale(1.01);
+  box-shadow: 0 0 20px rgba(0,0,0,0.6);
 }
 
-/* POSTS ESTILO RED SOCIAL */
+/* POSTS */
 .post {
   padding: 0;
   overflow: hidden;
@@ -91,13 +91,17 @@ input, button {
   width: 100%;
   padding: 10px;
   margin: 8px 0;
-  border-radius: 5px;
+  border-radius: 6px;
   border: none;
 }
 
 input {
   background: #334155;
   color: white;
+}
+
+input::placeholder {
+  color: #94a3b8;
 }
 
 input:focus {
@@ -109,6 +113,7 @@ button {
   color: black;
   cursor: pointer;
   transition: 0.3s;
+  font-weight: bold;
 }
 
 button:hover {
@@ -125,33 +130,85 @@ button:hover {
 
 /* ANIMACIÓN */
 .fade-in {
-  animation: fade 0.5s ease-in;
+  animation: fade 0.4s ease-in;
 }
 
 @keyframes fade {
   from {opacity: 0;}
   to {opacity: 1;}
 }
+
+/* 💬 COMENTARIOS */
 .comments {
   padding: 10px;
   border-top: 1px solid #334155;
 }
 
+/* comentario individual */
 .comment {
+  background: #020617;
+  padding: 8px;
+  border-radius: 8px;
+  margin-bottom: 8px;
   font-size: 14px;
-  margin-bottom: 5px;
 }
 
 .comment strong {
   color: #38bdf8;
 }
 
+/* INPUT DE COMENTARIO */
 .comment-input {
   display: flex;
-  gap: 5px;
-  margin-top: 5px;
+  gap: 8px;
+  margin-top: 10px;
 }
 
 .comment-input input {
   flex: 1;
+}
+
+/* BOTÓN COMENTAR */
+.comment-input button {
+  width: auto;
+  padding: 8px 12px;
+}
+
+/* SCROLL PARA MUCHOS COMENTARIOS */
+#comments {
+  max-height: 300px;
+  overflow-y: auto;
+  padding-right: 5px;
+}
+
+/* SCROLL BONITO */
+#comments::-webkit-scrollbar {
+  width: 6px;
+}
+
+#comments::-webkit-scrollbar-thumb {
+  background: #38bdf8;
+  border-radius: 10px;
+}
+
+/* RESPONSIVE (CELULAR) */
+@media (max-width: 600px) {
+
+  .container {
+    padding: 10px;
+  }
+
+  .post-img {
+    height: 200px;
+  }
+
+  .navbar {
+    flex-direction: column;
+    align-items: flex-start;
+  }
+
+  .post-actions {
+    flex-direction: column;
+    gap: 5px;
+  }
 }

@@ -43,7 +43,6 @@ const Post = mongoose.model("Post", {
   likes: { type: Number, default: 0 }
 });
 
-// 🆕 MODELO COMENTARIOS
 const Comment = mongoose.model("Comment", {
   postId: String,
   username: String,
@@ -131,7 +130,7 @@ app.post("/post", upload.single("media"), async (req, res) => {
 
 // 📄 OBTENER POSTS
 app.get("/posts", async (req, res) => {
-  const posts = await Post.find();
+  const posts = await Post.find().sort({ _id: -1 }); // 👈 más nuevos primero
   res.json(posts);
 });
 
@@ -174,7 +173,7 @@ app.post("/comment", async (req, res) => {
 app.get("/comments/:postId", async (req, res) => {
   try {
     const comments = await Comment.find({ postId: req.params.postId })
-    .sort({ createdAt: -1 }); // 👈 más nuevos arriba
+      .sort({ createdAt: -1 });
 
     res.json(comments);
 
@@ -200,7 +199,7 @@ app.get("/", (req, res) => {
   res.sendFile(path.join(__dirname, "public", "index.html"));
 });
 
-// 🚀 SERVIDOR
+// 🚀 SERVER
 app.listen(process.env.PORT || 3000, () => {
   console.log("🚀 Servidor corriendo");
 });

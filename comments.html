@@ -1,0 +1,123 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <title>Comentarios</title>
+  <link rel="stylesheet" href="css/styles.css">
+</head>
+
+<body>
+
+<script>
+if (!localStorage.getItem("userId")) {
+  window.location.href = "login.html";
+}
+</script>
+
+<!-- 🧭 NAVBAR -->
+<div class="navbar">
+  <h3>💬 Comentarios</h3>
+
+  <div>
+    <a href="index.html">⬅ Volver</a>
+    <button onclick="logout()">Cerrar sesión</button>
+  </div>
+</div>
+
+<div class="container fade-in">
+
+  <!-- POST -->
+  <div id="post"></div>
+
+  <!-- COMENTARIOS -->
+  <h3>Comentarios</h3>
+  <div id="comments"></div>
+
+  <!-- INPUT -->
+  <div class="comment-input">
+    <input id="input" placeholder="Escribe un comentario...">
+    <button onclick="addComment()">Enviar</button>
+  </div>
+
+</div>
+
+<script>
+
+// 📌 OBTENER ID DEL POST
+const params = new URLSearchParams(window.location.search);
+const postId = params.get("postId");
+
+// 🚪 LOGOUT
+function logout(){
+  localStorage.clear();
+  window.location.href = "login.html";
+}
+
+// 📄 CARGAR POST
+fetch("https://foro-trabajos.onrender.com/posts")
+.then(res => res.json())
+.then(data => {
+  const post = data.find(p => p._id === postId);
+
+  if (!post) return;
+
+  document.getElementById("post").innerHTML = `
+    <div class="card">
+      ${post.media ? `<img src="${post.media}" class="post-img">` : ""}
+      <h3>${post.title}</h3>
+      <p>${post.description}</p>
+    </div>
+  `;
+});
+
+// 💬 CARGAR COMENTARIOS
+function loadComments(){
+  fetch(`https://foro-trabajos.onrender.com/comments/${postId}`)
+  .then(res => res.json())
+  .then(data => {
+    const container = document.getElementById("comments");
+    container.innerHTML = "";
+
+    data.forEach(c => {
+      container.innerHTML += `
+        <div class="card">
+          <strong>${c.username}</strong>
+          <p>${c.content}</p>
+        </div>
+      `;
+    });
+  });
+}
+
+// 💬 AGREGAR COMENTARIO
+function addComment(){
+
+  const input = document.getElementById("input");
+  const text = input.value;
+
+  if (!text) {
+    alert("Escribe algo");
+    return;
+  }
+
+  fetch("https://foro-trabajos.onrender.com/comment", {
+    method:"POST",
+    headers:{"Content-Type":"application/json"},
+    body: JSON.stringify({
+      postId: postId,
+      username: localStorage.getItem("username"),
+      content: text
+    })
+  })
+  .then(() => {
+    input.value = "";
+    loadComments();
+  });
+}
+
+// 🚀 INICIAL
+loadComments();
+
+</script>
+
+</body>
+</html>

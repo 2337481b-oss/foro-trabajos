@@ -33,7 +33,7 @@ if (!localStorage.getItem("userId")) {
   <input id="description" placeholder="Descripción">
 
   <!-- INPUT -->
-  <input type="file" id="media" onchange="previewImage()">
+  <input type="file" id="media" accept="image/*" onchange="previewImage()">
 
   <!-- PREVIEW -->
   <img id="preview" style="display:none; margin-top:10px; width:100%; border-radius:10px;">
@@ -67,6 +67,7 @@ function previewImage(){
 
   if(!file) return;
 
+  // 🔒 VALIDACIONES
   if(!file.type.startsWith("image/")){
     alert("Solo puedes subir imágenes");
     mediaInput.value = "";
@@ -114,7 +115,8 @@ function upload(){
   const status = document.getElementById("status");
   const btn = document.getElementById("publishBtn");
 
-  if (!titleInput.value || !descInput.value) {
+  // 🔒 VALIDACIÓN
+  if (!titleInput.value.trim() || !descInput.value.trim()) {
     alert("Completa todos los campos");
     return;
   }
@@ -122,12 +124,12 @@ function upload(){
   // 🔄 UI DE CARGA
   btn.disabled = true;
   btn.innerText = "Publicando...";
-  status.innerText = "Subiendo publicación...";
+  status.innerText = "⏳ Subiendo publicación...";
 
   const formData = new FormData();
 
-  formData.append("title", titleInput.value);
-  formData.append("description", descInput.value);
+  formData.append("title", titleInput.value.trim());
+  formData.append("description", descInput.value.trim());
   formData.append("userId", localStorage.getItem("userId"));
 
   if (mediaInput.files.length > 0) {
@@ -138,16 +140,27 @@ function upload(){
     method:"POST",
     body: formData
   })
-  .then(res => res.text())
+  .then(async res => {
+    if (!res.ok) throw new Error("Error servidor");
+    return res.text();
+  })
   .then(data => {
+
+    // 🔁 LIMPIAR FORM
+    titleInput.value = "";
+    descInput.value = "";
+    removeImage();
+
     status.innerText = "✅ Publicado correctamente";
+
     setTimeout(() => {
       window.location.href = "index.html";
-    }, 1000);
+    }, 1200);
   })
   .catch(err => {
     console.log(err);
     status.innerText = "❌ Error al subir";
+
     btn.disabled = false;
     btn.innerText = "Publicar";
   });

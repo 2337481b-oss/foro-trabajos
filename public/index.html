@@ -7,12 +7,14 @@
 
 <body>
 
+<!-- 🔒 PROTECCIÓN -->
 <script>
 if (!localStorage.getItem("userId")) {
   window.location.href = "login.html";
 }
 </script>
 
+<!-- 🧭 NAVBAR -->
 <div class="navbar">
   <h3>💼 Foro</h3>
   <div>
@@ -22,6 +24,7 @@ if (!localStorage.getItem("userId")) {
   </div>
 </div>
 
+<!-- 📄 CONTENIDO -->
 <div class="container fade-in">
   <h2>Publicaciones</h2>
   <div id="posts"></div>
@@ -29,8 +32,9 @@ if (!localStorage.getItem("userId")) {
 
 <script>
 
+// 👤 USERNAME
 document.getElementById("userName").innerText =
-  "👤 " + localStorage.getItem("username");
+  "👤 " + (localStorage.getItem("username") || "Usuario");
 
 // 🚪 LOGOUT
 function logout(){
@@ -38,49 +42,56 @@ function logout(){
   window.location.href = "login.html";
 }
 
-// 📡 POSTS
-fetch("https://foro-trabajos.onrender.com/posts")
-.then(res => res.json())
-.then(data => {
-  const container = document.getElementById("posts");
+// 📡 CARGAR POSTS
+async function loadPosts(){
+  try {
+    const res = await fetch("https://foro-trabajos.onrender.com/posts");
+    const data = await res.json();
 
-  data.reverse().forEach(post => {
-    container.innerHTML += `
-      <div class="card post">
+    const container = document.getElementById("posts");
+    container.innerHTML = "";
 
-        <div class="post-header">👤 Usuario</div>
+    data.reverse().forEach(post => {
 
-        ${post.media ? `<img src="${post.media}" class="post-img">` : ""}
+      container.innerHTML += `
+        <div class="card post">
 
-        <div class="post-body">
-          <h3>${post.title}</h3>
-          <p>${post.description}</p>
-        </div>
-
-        <div class="post-actions">
-          <button onclick="likePost('${post._id}')">
-            ❤️ <span id="likes-${post._id}">${post.likes || 0}</span>
-          </button>
-        </div>
-
-        <!-- 💬 COMENTARIOS -->
-        <div class="comments" id="comments-${post._id}">
-          <div id="list-${post._id}"></div>
-
-          <div class="comment-input">
-            <input id="input-${post._id}" placeholder="Escribe un comentario...">
-            <button onclick="addComment('${post._id}')">Enviar</button>
+          <div class="post-header">
+            👤 Usuario
           </div>
+
+          ${post.media ? `<img src="${post.media}" class="post-img">` : ""}
+
+          <div class="post-body">
+            <h3>${post.title}</h3>
+            <p>${post.description}</p>
+          </div>
+
+          <div class="post-actions">
+
+            <button onclick="likePost('${post._id}')">
+              ❤️ <span id="likes-${post._id}">${post.likes || 0}</span>
+            </button>
+
+            <button onclick="goToComments('${post._id}')">
+              💬 <span id="count-${post._id}">...</span>
+            </button>
+
+          </div>
+
         </div>
+      `;
 
-      </div>
-    `;
+      // cargar número de comentarios
+      loadCommentCount(post._id);
+    });
 
-    loadComments(post._id);
-  });
-});
+  } catch (err) {
+    console.log(err);
+  }
+}
 
-// ❤️ LIKE
+// ❤️ LIKE SIN RECARGAR
 function likePost(id){
   fetch(`https://foro-trabajos.onrender.com/like/${id}`, {
     method:"POST"
@@ -91,46 +102,23 @@ function likePost(id){
   });
 }
 
-// 💬 CARGAR COMENTARIOS
-function loadComments(postId){
+// 💬 IR A COMENTARIOS
+function goToComments(postId){
+  window.location.href = `comments.html?postId=${postId}`;
+}
+
+// 🔢 CONTAR COMENTARIOS
+function loadCommentCount(postId){
   fetch(`https://foro-trabajos.onrender.com/comments/${postId}`)
   .then(res => res.json())
   .then(data => {
-    const list = document.getElementById("list-" + postId);
-    list.innerHTML = "";
-
-    data.forEach(c => {
-      list.innerHTML += `
-        <div class="comment">
-          <strong>${c.username}:</strong> ${c.content}
-        </div>
-      `;
-    });
+    const el = document.getElementById("count-" + postId);
+    el.innerText = data.length;
   });
 }
 
-// 💬 AGREGAR COMENTARIO
-function addComment(postId){
-
-  const input = document.getElementById("input-" + postId);
-  const text = input.value;
-
-  if (!text) return;
-
-  fetch("https://foro-trabajos.onrender.com/comment", {
-    method:"POST",
-    headers:{"Content-Type":"application/json"},
-    body: JSON.stringify({
-      postId: postId,
-      username: localStorage.getItem("username"),
-      content: text
-    })
-  })
-  .then(() => {
-    input.value = "";
-    loadComments(postId); // recargar solo comentarios
-  });
-}
+// 🚀 INICIAR
+loadPosts();
 
 </script>
 
