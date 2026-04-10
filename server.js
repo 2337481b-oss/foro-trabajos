@@ -16,6 +16,7 @@ app.use(express.json());
 app.use(cors());
 app.use(express.static(path.join(__dirname, "public")));
 
+
 // ☁️ CLOUDINARY
 cloudinary.config({
   cloud_name: process.env.CLOUD_NAME,
@@ -28,11 +29,17 @@ mongoose.connect(process.env.MONGO_URI)
 .then(() => console.log("✅ Conectado a MongoDB"))
 .catch(err => console.log(err));
 
+
+// =====================
 // 📦 MODELOS
+// =====================
+
 const User = mongoose.model("User", {
   username: String,
   email: String,
-  password: String
+  password: String,
+  avatar: { type: String, default: "" },
+  bio: { type: String, default: "" }
 });
 
 const Post = mongoose.model("Post", {
@@ -40,7 +47,8 @@ const Post = mongoose.model("Post", {
   description: String,
   media: String,
   userId: String,
-  likes: { type: Number, default: 0 }
+  likes: { type: Number, default: 0 },
+  likesUsers: [String] // 🔥 evita likes duplicados
 });
 
 const Comment = mongoose.model("Comment", {
@@ -56,7 +64,28 @@ const Message = mongoose.model("Message", {
   content: String
 });
 
+
+// =====================
+// 🔐 AUTH MIDDLEWARE
+// =====================
+function auth(req, res, next){
+  const token = req.headers.authorization;
+
+  if (!token) return res.status(401).send("No autorizado");
+
+  try {
+    const decoded = jwt.verify(token, "secreto");
+    req.userId = decoded.id;
+    next();
+  } catch {
+    res.status(401).send("Token inválido");
+  }
+}
+
+
+// =====================
 // 🔐 REGISTER
+// =====================
 app.post("/register", async (req, res) => {
   const { username, email, password } = req.body;
 
@@ -73,15 +102,23 @@ app.post("/register", async (req, res) => {
   try {
     const hashed = await bcrypt.hash(password, 10);
 
-    await new User({ username, email, password: hashed }).save();
+    await new User({
+      username,
+      email,
+      password: hashed
+    }).save();
 
     res.send("Usuario registrado");
-  } catch (err) {
+
+  } catch {
     res.status(500).send("Error al registrar usuario");
   }
 });
 
+
+// =====================
 // 🔑 LOGIN
+// =====================
 app.post("/login", async (req, res) => {
   const { email, password } = req.body;
 
@@ -96,7 +133,10 @@ app.post("/login", async (req, res) => {
   res.json({ token, user });
 });
 
-// 📂 CLOUDINARY STORAGE
+
+// =====================
+// 📂 CLOUDINARY
+// =====================
 const storage = new CloudinaryStorage({
   cloudinary,
   params: {
@@ -107,7 +147,62 @@ const storage = new CloudinaryStorage({
 
 const upload = multer({ storage });
 
-// 📝 CREAR POST
+
+// =====================
+// 👤 PERFIL
+// =====================
+
+// obtener perfil
+app.get("/user/:id", async (req, res) => {
+  try {
+    const user = await User.findById(req.params.id).select("-password");
+    res.json(user);
+  } catch {
+    res.status(500).send("Error al obtener usuario");
+  }
+});
+
+// editar perfil
+app.put("/user/:id", async (req, res) => {
+  try {
+    const { username, bio } = req.body;
+
+    await User.findByIdAndUpdate(req.params.id, {
+      username,
+      bio
+    });
+
+    res.send("Perfil actualizado");
+
+  } catch {
+    res.status(500).send("Error al actualizar perfil");
+  }
+});
+
+// subir avatar
+app.post("/upload-avatar", upload.single("avatar"), async (req, res) => {
+  try {
+    const { userId } = req.body;
+
+    if (!req.file)
+      return res.status(400).send("No hay imagen");
+
+    await User.findByIdAndUpdate(userId, {
+      avatar: req.file.path
+    });
+
+    res.send("Avatar actualizado");
+
+  } catch {
+    res.status(500).send("Error al subir avatar");
+  }
+});
+
+
+// =====================
+// 📝 POSTS
+// =====================
+
 app.post("/post", upload.single("media"), async (req, res) => {
   try {
     const { title, description, userId } = req.body;
@@ -125,30 +220,59 @@ app.post("/post", upload.single("media"), async (req, res) => {
     await post.save();
     res.send("Publicación creada");
 
-  } catch (err) {
+  } catch {
     res.status(500).send("Error al publicar");
   }
 });
 
-// 📄 POSTS
+// feed
 app.get("/posts", async (req, res) => {
   const posts = await Post.find().sort({ _id: -1 }).limit(50);
   res.json(posts);
 });
 
-// ❤️ LIKE
+// posts por usuario
+app.get("/posts/user/:userId", async (req, res) => {
+  try {
+    const posts = await Post.find({ userId: req.params.userId })
+      .sort({ _id: -1 });
+
+    res.json(posts);
+  } catch {
+    res.status(500).send("Error al obtener posts");
+  }
+});
+
+
+// =====================
+// ❤️ LIKE PRO (ANTI SPAM)
+// =====================
 app.post("/like/:id", async (req, res) => {
   try {
-    await Post.findByIdAndUpdate(req.params.id, {
-      $inc: { likes: 1 }
-    });
+    const { userId } = req.body;
+
+    const post = await Post.findById(req.params.id);
+
+    if (post.likesUsers.includes(userId)) {
+      return res.send("Ya diste like");
+    }
+
+    post.likesUsers.push(userId);
+    post.likes += 1;
+
+    await post.save();
+
     res.send("Like agregado");
+
   } catch {
     res.status(500).send("Error al dar like");
   }
 });
 
-// 🗑 ELIMINAR POST
+
+// =====================
+// 🗑 DELETE POST
+// =====================
 app.delete("/post/:id", async (req, res) => {
   try {
     const post = await Post.findById(req.params.id);
@@ -158,7 +282,6 @@ app.delete("/post/:id", async (req, res) => {
     if (post.userId !== req.body.userId)
       return res.status(403).send("No autorizado");
 
-    // eliminar imagen
     if (post.media) {
       const fileName = post.media.split("/").pop();
       const publicId = "foro-trabajos/" + fileName.split(".")[0];
@@ -175,7 +298,11 @@ app.delete("/post/:id", async (req, res) => {
   }
 });
 
-// 💬 CREAR COMENTARIO
+
+// =====================
+// 💬 COMMENTS
+// =====================
+
 app.post("/comment", async (req, res) => {
   try {
     const { postId, username, content } = req.body;
@@ -183,13 +310,10 @@ app.post("/comment", async (req, res) => {
     if (!postId || !content)
       return res.status(400).send("Datos incompletos");
 
-    if (content.length > 300)
-      return res.status(400).send("Comentario muy largo");
-
     await new Comment({
       postId,
       username,
-      content
+      content: content.slice(0, 300)
     }).save();
 
     res.send("Comentario agregado");
@@ -199,7 +323,6 @@ app.post("/comment", async (req, res) => {
   }
 });
 
-// 📄 OBTENER COMENTARIOS
 app.get("/comments/:postId", async (req, res) => {
   try {
     const comments = await Comment.find({ postId: req.params.postId })
@@ -213,7 +336,6 @@ app.get("/comments/:postId", async (req, res) => {
   }
 });
 
-// 🔢 CONTAR COMENTARIOS (OPTIMIZADO)
 app.get("/comments-count/:postId", async (req, res) => {
   try {
     const count = await Comment.countDocuments({
@@ -225,7 +347,10 @@ app.get("/comments-count/:postId", async (req, res) => {
   }
 });
 
+
+// =====================
 // 💬 MENSAJES
+// =====================
 app.post("/message", async (req, res) => {
   try {
     await new Message(req.body).save();
@@ -235,12 +360,18 @@ app.post("/message", async (req, res) => {
   }
 });
 
+
+// =====================
 // 🏠 HOME
+// =====================
 app.get("/", (req, res) => {
   res.sendFile(path.join(__dirname, "public", "index.html"));
 });
 
+
+// =====================
 // 🚀 SERVER
+// =====================
 app.listen(process.env.PORT || 3000, () => {
   console.log("🚀 Servidor corriendo");
 });

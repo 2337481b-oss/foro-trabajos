@@ -29,8 +29,11 @@ if (!localStorage.getItem("userId")) {
 <div class="container fade-in">
   <h2>Nueva Publicación</h2>
 
-  <input id="title" placeholder="Título">
-  <input id="description" placeholder="¿Qué quieres compartir?">
+  <input id="title" maxlength="100" placeholder="Título">
+  <small id="titleCount">0/100</small>
+
+  <textarea id="description" maxlength="500" placeholder="¿Qué quieres compartir?" style="width:100%; height:100px;"></textarea>
+  <small id="descCount">0/500</small>
 
   <!-- INPUT -->
   <input type="file" id="media" accept="image/*" onchange="previewImage()">
@@ -59,6 +62,20 @@ function logout(){
   localStorage.clear();
   window.location.href = "login.html";
 }
+
+// 📊 CONTADOR TEXTO
+const titleInput = document.getElementById("title");
+const descInput = document.getElementById("description");
+
+titleInput.addEventListener("input", () => {
+  document.getElementById("titleCount").innerText =
+    `${titleInput.value.length}/100`;
+});
+
+descInput.addEventListener("input", () => {
+  document.getElementById("descCount").innerText =
+    `${descInput.value.length}/500`;
+});
 
 // 👁️ PREVIEW
 function previewImage(){
@@ -110,30 +127,30 @@ function removeImage(){
 // 🚀 SUBIR
 function upload(){
 
-  const titleInput = document.getElementById("title");
-  const descInput = document.getElementById("description");
+  const title = titleInput.value.trim();
+  const desc = descInput.value.trim();
   const mediaInput = document.getElementById("media");
   const status = document.getElementById("status");
   const btn = document.getElementById("publishBtn");
 
-  // 🔒 VALIDACIÓN
-  if (!titleInput.value.trim() || !descInput.value.trim()) {
-    alert("⚠️ Completa todos los campos");
+  // 🔒 VALIDACIÓN PRO
+  if (!title || !desc) {
+    status.style.color = "#ef4444";
+    status.innerText = "⚠️ Completa todos los campos";
     return;
   }
 
-  // 🚫 EVITAR DOBLE CLICK
   if (btn.disabled) return;
 
-  // 🔄 UI DE CARGA
+  // 🔄 UI
   btn.disabled = true;
   btn.innerText = "Publicando...";
+  status.style.color = "#38bdf8";
   status.innerText = "⏳ Subiendo publicación...";
 
   const formData = new FormData();
-
-  formData.append("title", titleInput.value.trim());
-  formData.append("description", descInput.value.trim());
+  formData.append("title", title);
+  formData.append("description", desc);
   formData.append("userId", localStorage.getItem("userId"));
 
   if (mediaInput.files.length > 0) {
@@ -145,37 +162,41 @@ function upload(){
     body: formData
   })
   .then(async res => {
-    if (!res.ok) throw new Error("Error servidor");
-    return res.text();
+    const text = await res.text();
+    if (!res.ok) throw new Error(text);
+    return text;
   })
   .then(() => {
 
-    // 🔁 LIMPIAR FORM
+    // 🔁 LIMPIAR
     titleInput.value = "";
     descInput.value = "";
     removeImage();
 
+    status.style.color = "#22c55e";
     status.innerText = "✅ Publicado correctamente";
 
-    // 🔥 EFECTO UX
     btn.innerText = "✔ Publicado";
 
+    // 🔥 REDIRECCIÓN SUAVE
     setTimeout(() => {
       window.location.href = "index.html";
-    }, 900);
+    }, 800);
   })
   .catch(err => {
     console.log(err);
 
-    status.innerText = "❌ Error al subir publicación";
+    status.style.color = "#ef4444";
+    status.innerText = err.message || "❌ Error al subir";
+
     btn.disabled = false;
     btn.innerText = "Publicar";
   });
 }
 
-// 🔥 ENTER PARA PUBLICAR
+// ⌨️ CTRL + ENTER PARA PUBLICAR
 document.addEventListener("keydown", (e) => {
-  if (e.key === "Enter") {
+  if (e.ctrlKey && e.key === "Enter") {
     upload();
   }
 });

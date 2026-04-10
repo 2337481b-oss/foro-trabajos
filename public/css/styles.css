@@ -1,40 +1,48 @@
+/* 🌐 VARIABLES PRO */
+:root {
+  --bg: #0f172a;
+  --card: #1e293b;
+  --dark: #020617;
+  --primary: #38bdf8;
+  --primary-hover: #0ea5e9;
+  --danger: #ef4444;
+  --text: #e2e8f0;
+  --muted: #94a3b8;
+}
+
+/* BODY */
 body {
   margin: 0;
   font-family: Arial, sans-serif;
-  background: #0f172a;
-  color: #e2e8f0;
+  background: var(--bg);
+  color: var(--text);
   scroll-behavior: smooth;
 }
 
 /* NAVBAR */
 .navbar {
-  background: #020617;
+  background: var(--dark);
   padding: 15px;
   display: flex;
   justify-content: space-between;
   align-items: center;
+
+  /* efecto pro */
+  position: sticky;
+  top: 0;
+  z-index: 100;
+  backdrop-filter: blur(6px);
 }
 
 .navbar a {
-  color: #38bdf8;
+  color: var(--primary);
   text-decoration: none;
   margin: 0 10px;
   transition: 0.2s;
 }
 
 .navbar a:hover {
-  color: #0ea5e9;
-}
-
-.navbar button {
-  width: auto;
-  padding: 5px 10px;
-  background: #ef4444;
-  color: white;
-}
-
-.navbar button:hover {
-  background: #dc2626;
+  color: var(--primary-hover);
 }
 
 /* CONTENEDOR */
@@ -46,16 +54,17 @@ body {
 
 /* CARDS */
 .card {
-  background: #1e293b;
+  background: var(--card);
   padding: 15px;
   border-radius: 14px;
   margin-bottom: 15px;
-  transition: transform 0.25s, box-shadow 0.25s;
+
+  transition: transform 0.2s, box-shadow 0.2s;
 }
 
 .card:hover {
   transform: translateY(-3px);
-  box-shadow: 0 0 25px rgba(0,0,0,0.6);
+  box-shadow: 0 10px 30px rgba(0,0,0,0.5);
 }
 
 /* POSTS */
@@ -66,31 +75,27 @@ body {
 
 .post-header {
   padding: 10px;
-  background: #020617;
+  background: var(--dark);
   font-size: 14px;
   display: flex;
   justify-content: space-between;
   align-items: center;
 }
 
-/* DELETE */
-.delete-btn {
-  background: none;
-  color: #ef4444;
-  font-size: 14px;
-  cursor: pointer;
-}
-
-.delete-btn:hover {
-  color: #dc2626;
-}
-
+/* IMG */
 .post-img {
   width: 100%;
   height: 300px;
   object-fit: cover;
+
+  transition: transform 0.3s;
 }
 
+.post-img:hover {
+  transform: scale(1.02);
+}
+
+/* BODY */
 .post-body {
   padding: 10px;
 }
@@ -113,7 +118,7 @@ body {
 
 .post-actions button {
   background: none;
-  color: #38bdf8;
+  color: var(--primary);
   font-size: 18px;
   transition: 0.2s;
 }
@@ -122,52 +127,66 @@ body {
   transform: scale(1.2);
 }
 
-/* LIKE */
+/* ❤️ LIKE ANIMADO */
 .liked {
-  color: #ef4444 !important;
+  color: var(--danger) !important;
   transform: scale(1.3);
 }
 
 /* INPUTS */
-input, button {
+input, textarea {
   width: 100%;
   padding: 10px;
   margin: 8px 0;
   border-radius: 6px;
   border: none;
-}
-
-input {
   background: #334155;
   color: white;
   transition: 0.2s;
 }
 
-input::placeholder {
-  color: #94a3b8;
+textarea {
+  resize: none;
 }
 
-input:focus {
+input::placeholder,
+textarea::placeholder {
+  color: var(--muted);
+}
+
+input:focus,
+textarea:focus {
   outline: none;
-  box-shadow: 0 0 0 2px #38bdf8;
+  box-shadow: 0 0 0 2px var(--primary);
 }
 
 /* BOTONES */
 button {
-  background: #38bdf8;
+  background: var(--primary);
   color: black;
   cursor: pointer;
   transition: 0.2s;
   font-weight: bold;
+  border-radius: 6px;
 }
 
 button:hover {
-  background: #0ea5e9;
+  background: var(--primary-hover);
 }
 
-/* CLICK */
 button:active {
   transform: scale(0.95);
+}
+
+/* BOTÓN ELIMINAR */
+.delete-btn {
+  background: none;
+  color: var(--danger);
+  cursor: pointer;
+}
+
+.delete-btn:hover {
+  color: #dc2626;
 }
 
 /* PREVIEW */
@@ -176,16 +195,30 @@ button:active {
   max-height: 300px;
   object-fit: cover;
   box-shadow: 0 0 10px rgba(0,0,0,0.5);
+
+  animation: fade 0.3s;
 }
 
-/* ANIMACIÓN */
-.fade-in {
-  animation: fade 0.4s ease-in;
+/* ✨ LOADING SHIMMER */
+.loading {
+  text-align: center;
+  opacity: 0.7;
+  font-size: 14px;
 }
 
-@keyframes fade {
-  from {opacity: 0;}
-  to {opacity: 1;}
+/* ✨ SPINNER */
+.spinner {
+  width: 20px;
+  height: 20px;
+  border: 3px solid #334155;
+  border-top: 3px solid var(--primary);
+  border-radius: 50%;
+  animation: spin 1s linear infinite;
+  margin: auto;
+}
+
+@keyframes spin {
+  to { transform: rotate(360deg); }
 }
 
 /* 💬 COMENTARIOS */
@@ -202,16 +235,21 @@ button:active {
 
 /* COMENTARIO */
 .comment {
-  background: #020617;
+  background: var(--dark);
   padding: 8px;
   border-radius: 8px;
   margin-bottom: 8px;
   font-size: 14px;
-  animation: fade 0.3s;
+
+  transition: 0.2s;
+}
+
+.comment:hover {
+  background: #020617d0;
 }
 
 .comment strong {
-  color: #38bdf8;
+  color: var(--primary);
 }
 
 /* INPUT COMENTARIO */
@@ -241,18 +279,21 @@ button:active {
 }
 
 .comments::-webkit-scrollbar-thumb {
-  background: #38bdf8;
+  background: var(--primary);
   border-radius: 10px;
 }
 
-/* LOADING */
-.loading {
-  text-align: center;
-  opacity: 0.7;
-  font-size: 14px;
+/* ✨ ANIMACIÓN */
+.fade-in {
+  animation: fade 0.4s ease-in;
 }
 
-/* RESPONSIVE */
+@keyframes fade {
+  from {opacity: 0;}
+  to {opacity: 1;}
+}
+
+/* 📱 RESPONSIVE */
 @media (max-width: 600px) {
 
   .container {

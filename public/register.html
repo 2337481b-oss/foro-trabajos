@@ -21,9 +21,15 @@ if (localStorage.getItem("userId")) {
   <input id="password" type="password" placeholder="Contraseña">
   <input id="confirmPassword" type="password" placeholder="Confirmar contraseña">
 
+  <!-- 👁️ Mostrar contraseña -->
+  <label style="font-size:14px;">
+    <input type="checkbox" onclick="togglePassword()"> Mostrar contraseña
+  </label>
+
   <button id="registerBtn" onclick="register()">Registrarse</button>
 
   <p id="error" style="color:#ef4444; text-align:center;"></p>
+
   <p style="text-align:center;">
     ¿Ya tienes cuenta? <a href="login.html">Inicia sesión</a>
   </p>
@@ -31,68 +37,98 @@ if (localStorage.getItem("userId")) {
 
 <script>
 
+// 👁️ MOSTRAR CONTRASEÑA
+function togglePassword(){
+  const pass = document.getElementById("password");
+  const confirm = document.getElementById("confirmPassword");
+
+  const type = pass.type === "password" ? "text" : "password";
+  pass.type = type;
+  confirm.type = type;
+}
+
+// 🚀 REGISTER
 function register(){
 
-  const userInput = document.getElementById("username");
-  const emailInput = document.getElementById("email");
-  const passInput = document.getElementById("password");
-  const confirmInput = document.getElementById("confirmPassword");
+  const username = document.getElementById("username").value.trim();
+  const email = document.getElementById("email").value.trim();
+  const password = document.getElementById("password").value;
+  const confirm = document.getElementById("confirmPassword").value;
+
   const error = document.getElementById("error");
   const btn = document.getElementById("registerBtn");
 
   error.innerText = "";
 
-  // 🔒 VALIDACIONES
-  if (!userInput.value.trim() || !emailInput.value.trim() || !passInput.value.trim()) {
+  // 🔒 VALIDACIONES PRO
+  if (!username || !email || !password || !confirm) {
     error.innerText = "Completa todos los campos";
+    return;
+  }
+
+  // username mínimo
+  if (username.length < 3) {
+    error.innerText = "El usuario debe tener al menos 3 caracteres";
     return;
   }
 
   // email válido
   const emailRegex = /\S+@\S+\.\S+/;
-  if (!emailRegex.test(emailInput.value)) {
+  if (!emailRegex.test(email)) {
     error.innerText = "Email inválido";
     return;
   }
 
-  // contraseña mínima
-  if (passInput.value.length < 6) {
+  // contraseña fuerte
+  if (password.length < 6) {
     error.innerText = "La contraseña debe tener mínimo 6 caracteres";
     return;
   }
 
+  if (!/[A-Z]/.test(password) || !/[0-9]/.test(password)) {
+    error.innerText = "La contraseña debe tener al menos 1 número y 1 mayúscula";
+    return;
+  }
+
   // confirmar contraseña
-  if (passInput.value !== confirmInput.value) {
+  if (password !== confirm) {
     error.innerText = "Las contraseñas no coinciden";
     return;
   }
 
-  // 🔄 UI CARGA
+  // 🚫 evitar doble click
+  if (btn.disabled) return;
+
+  // 🔄 UI
   btn.disabled = true;
   btn.innerText = "Registrando...";
 
   fetch("https://foro-trabajos.onrender.com/register", {
     method:"POST",
     headers:{"Content-Type":"application/json"},
-    body: JSON.stringify({
-      username: userInput.value.trim(),
-      email: emailInput.value.trim(),
-      password: passInput.value
-    })
+    body: JSON.stringify({ username, email, password })
   })
   .then(async res => {
     const text = await res.text();
-
     if (!res.ok) throw new Error(text);
-
     return text;
   })
   .then(data => {
-    alert("✅ " + data);
-    window.location.href = "login.html";
+
+    // 🔥 AUTO LOGIN (nivel pro real)
+    localStorage.setItem("username", username);
+
+    error.style.color = "#22c55e";
+    error.innerText = "Cuenta creada correctamente";
+
+    setTimeout(() => {
+      window.location.href = "login.html";
+    }, 1000);
   })
   .catch(err => {
+    error.style.color = "#ef4444";
     error.innerText = err.message || "Error al registrar";
+
     btn.disabled = false;
     btn.innerText = "Registrarse";
   });

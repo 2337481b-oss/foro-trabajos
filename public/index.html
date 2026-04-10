@@ -57,7 +57,10 @@ async function loadPosts(){
         <div class="card post" id="post-${post._id}">
 
           <div class="post-header">
-            👤 Usuario
+            <div class="user-info">
+              <div class="avatar"></div>
+              <span>👤 Usuario</span>
+            </div>
           </div>
 
           ${post.media ? `<img src="${post.media}" class="post-img">` : ""}
@@ -74,7 +77,7 @@ async function loadPosts(){
             </button>
 
             <button onclick="toggleComments('${post._id}')">
-              💬 <span id="count-${post._id}">0</span>
+              💬 <span id="count-${post._id}">...</span>
             </button>
 
             ${post.userId === localStorage.getItem("userId") ? `
@@ -83,11 +86,11 @@ async function loadPosts(){
 
           </div>
 
-          <!-- 💬 COMENTARIOS OCULTOS -->
-          <div class="comments" id="comments-${post._id}" style="display:none;">
-            
+          <!-- 💬 COMENTARIOS -->
+          <div class="comments" id="comments-${post._id}">
+
             <div id="list-${post._id}" class="loading">
-              ⏳ Cargando comentarios...
+              ⏳ Cargando...
             </div>
 
             <div class="comment-input">
@@ -108,23 +111,26 @@ async function loadPosts(){
   }
 }
 
-// ❤️ LIKE CON ANIMACIÓN
+// ❤️ LIKE PRO (ANTI SPAM)
 function likePost(id, btn){
 
   fetch(`https://foro-trabajos.onrender.com/like/${id}`, {
-    method:"POST"
+    method:"POST",
+    headers:{"Content-Type":"application/json"},
+    body: JSON.stringify({
+      userId: localStorage.getItem("userId")
+    })
   })
-  .then(() => {
+  .then(res => res.text())
+  .then(msg => {
+
+    if (msg === "Ya diste like") return;
 
     const el = document.getElementById("likes-" + id);
     el.innerText = parseInt(el.innerText) + 1;
 
-    // animación ❤️
     btn.classList.add("liked");
-
-    setTimeout(() => {
-      btn.classList.remove("liked");
-    }, 300);
+    setTimeout(() => btn.classList.remove("liked"), 300);
   });
 }
 
@@ -147,15 +153,14 @@ function deletePost(id){
   });
 }
 
-// 💬 MOSTRAR/OCULTAR (tipo Facebook)
+// 💬 TOGGLE COMENTARIOS (UX PRO)
 function toggleComments(postId){
   const box = document.getElementById("comments-" + postId);
 
-  if (box.style.display === "none") {
-    box.style.display = "block";
+  box.classList.toggle("active");
+
+  if (box.classList.contains("active")) {
     loadComments(postId);
-  } else {
-    box.style.display = "none";
   }
 }
 
@@ -167,7 +172,7 @@ function loadComments(postId){
     const list = document.getElementById("list-" + postId);
     list.innerHTML = "";
 
-    if (data.length === 0) {
+    if (!data.length) {
       list.innerHTML = `<p style="opacity:0.6;">Sin comentarios</p>`;
       return;
     }
@@ -205,13 +210,13 @@ function addComment(postId){
   });
 }
 
-// 🔢 CONTAR COMENTARIOS
+// 🔢 CONTAR COMENTARIOS (OPTIMIZADO)
 function loadCommentCount(postId){
-  fetch(`https://foro-trabajos.onrender.com/comments/${postId}`)
+  fetch(`https://foro-trabajos.onrender.com/comments-count/${postId}`)
   .then(res => res.json())
   .then(data => {
     const el = document.getElementById("count-" + postId);
-    el.innerText = data.length;
+    el.innerText = data.count;
   });
 }
 

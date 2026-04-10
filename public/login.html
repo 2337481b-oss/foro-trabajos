@@ -7,6 +7,13 @@
 
 <body>
 
+<script>
+// 🔒 Si ya está logueado → directo al feed
+if (localStorage.getItem("userId")) {
+  window.location.href = "index.html";
+}
+</script>
+
 <div class="container fade-in">
 
   <h2 id="formTitle">Iniciar Sesión</h2>
@@ -15,7 +22,7 @@
   <input id="username" placeholder="Usuario" style="display:none;">
 
   <input id="email" placeholder="Email">
-  
+
   <div style="position:relative;">
     <input id="password" type="password" placeholder="Contraseña">
     <span onclick="togglePassword()" style="
@@ -26,6 +33,11 @@
       color:#38bdf8;
     ">👁️</span>
   </div>
+
+  <!-- RECORDAR SESIÓN -->
+  <label style="font-size:14px;">
+    <input type="checkbox" id="remember"> Recordarme
+  </label>
 
   <button id="mainBtn" onclick="handleAction()">Entrar</button>
 
@@ -41,13 +53,13 @@
 
 let isLogin = true;
 
-// 👁️ MOSTRAR / OCULTAR PASSWORD
+// 👁️ PASSWORD
 function togglePassword(){
   const pass = document.getElementById("password");
   pass.type = pass.type === "password" ? "text" : "password";
 }
 
-// 🔁 CAMBIAR FORMULARIO
+// 🔁 CAMBIAR FORM
 function toggleForm(){
   isLogin = !isLogin;
 
@@ -68,12 +80,14 @@ function toggleForm(){
   document.getElementById("error").innerText = "";
 }
 
-// 🚀 ACCIÓN
+// 🚀 LOGIN / REGISTER
 function handleAction(){
 
   const email = document.getElementById("email").value.trim();
   const password = document.getElementById("password").value.trim();
   const username = document.getElementById("username").value.trim();
+  const remember = document.getElementById("remember").checked;
+
   const error = document.getElementById("error");
   const btn = document.getElementById("mainBtn");
 
@@ -85,14 +99,15 @@ function handleAction(){
     return;
   }
 
-  // validar email
   const emailRegex = /\S+@\S+\.\S+/;
   if (!emailRegex.test(email)) {
     error.innerText = "Email inválido";
     return;
   }
 
-  // 🔄 LOADING
+  if (btn.disabled) return;
+
+  // 🔄 UI
   btn.disabled = true;
   btn.innerText = isLogin ? "Entrando..." : "Registrando...";
 
@@ -107,15 +122,22 @@ function handleAction(){
     .then(async res => {
       const data = await res.json();
 
-      if (!data.user) throw new Error(data);
+      if (!res.ok) throw new Error(data);
 
       return data;
     })
     .then(data => {
 
+      // 💾 GUARDAR SESIÓN
       localStorage.setItem("userId", data.user._id);
       localStorage.setItem("username", data.user.username);
+      localStorage.setItem("token", data.token);
 
+      if (remember) {
+        localStorage.setItem("remember", "true");
+      }
+
+      // 🎯 REDIRECCIÓN
       window.location.href = "index.html";
     })
     .catch(err => {
@@ -140,13 +162,22 @@ function handleAction(){
       return text;
     })
     .then(() => {
-      error.style.color = "#22c55e";
-      error.innerText = "Cuenta creada ✔ Ahora inicia sesión";
 
-      toggleForm();
+      // 🔥 AUTO LOGIN (PRO)
+      return fetch("https://foro-trabajos.onrender.com/login", {
+        method:"POST",
+        headers:{"Content-Type":"application/json"},
+        body: JSON.stringify({ email, password })
+      });
+    })
+    .then(res => res.json())
+    .then(data => {
 
-      btn.disabled = false;
-      btn.innerText = "Entrar";
+      localStorage.setItem("userId", data.user._id);
+      localStorage.setItem("username", data.user.username);
+      localStorage.setItem("token", data.token);
+
+      window.location.href = "index.html";
     })
     .catch(err => {
       error.innerText = err.message || "Error al registrar";
