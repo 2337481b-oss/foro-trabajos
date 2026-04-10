@@ -12,35 +12,79 @@
 
   <input id="title" placeholder="Título">
   <input id="description" placeholder="Descripción">
-  <input type="file" id="media">
+
+  <!-- INPUT CORRECTO -->
   <input type="file" id="media" onchange="previewImage()">
 
-<img id="preview" style="width:100%; margin-top:10px; display:none;">
+  <!-- PREVIEW -->
+  <img id="preview" style="display:none; margin-top:10px; width:100%; border-radius:10px;">
+
+  <!-- BOTÓN PARA QUITAR -->
+  <button id="removeBtn" onclick="removeImage()" style="display:none;">Quitar imagen</button>
 
   <button onclick="upload()">Publicar</button>
 </div>
 
 <script>
-  function previewImage(){
-  const file = media.files[0];
 
-  if(file){
-    const reader = new FileReader();
+// 👁️ PREVIEW
+function previewImage(){
+  const mediaInput = document.getElementById("media");
+  const file = mediaInput.files[0];
 
-    reader.onload = function(e){
-      const preview = document.getElementById("preview");
-      preview.src = e.target.result;
-      preview.style.display = "block";
-    }
+  if(!file) return;
 
-    reader.readAsDataURL(file);
+  // 🔒 Validar tipo
+  if(!file.type.startsWith("image/")){
+    alert("Solo puedes subir imágenes");
+    mediaInput.value = "";
+    return;
   }
+
+  // 🔒 Validar tamaño (5MB)
+  if(file.size > 5 * 1024 * 1024){
+    alert("La imagen es muy grande (máx 5MB)");
+    mediaInput.value = "";
+    return;
+  }
+
+  const reader = new FileReader();
+
+  reader.onload = function(e){
+    const preview = document.getElementById("preview");
+    const removeBtn = document.getElementById("removeBtn");
+
+    preview.src = e.target.result;
+    preview.style.display = "block";
+    removeBtn.style.display = "block";
+  }
+
+  reader.readAsDataURL(file);
 }
+
+// ❌ QUITAR IMAGEN
+function removeImage(){
+  const mediaInput = document.getElementById("media");
+  const preview = document.getElementById("preview");
+  const removeBtn = document.getElementById("removeBtn");
+
+  mediaInput.value = "";
+  preview.src = "";
+  preview.style.display = "none";
+  removeBtn.style.display = "none";
+}
+
+// 🚀 SUBIR
 function upload(){
 
   const titleInput = document.getElementById("title");
   const descInput = document.getElementById("description");
   const mediaInput = document.getElementById("media");
+
+  if (!titleInput.value || !descInput.value) {
+    alert("Completa todos los campos");
+    return;
+  }
 
   const formData = new FormData();
 
@@ -48,7 +92,6 @@ function upload(){
   formData.append("description", descInput.value);
   formData.append("userId", localStorage.getItem("userId"));
 
-  // 👇 CLAVE
   if (mediaInput.files.length > 0) {
     formData.append("media", mediaInput.files[0]);
   }
@@ -67,4 +110,8 @@ function upload(){
     alert("Error al subir");
   });
 }
+
 </script>
+
+</body>
+</html>
