@@ -7,7 +7,7 @@
 
 <body>
 
-  <script>
+<script>
 if (localStorage.getItem("userId")) {
   window.location.href = "index.html";
 }
@@ -18,43 +18,86 @@ if (localStorage.getItem("userId")) {
 
   <input id="username" placeholder="Usuario">
   <input id="email" placeholder="Email">
-  <input id="password" type="password" placeholder="Password">
+  <input id="password" type="password" placeholder="Contraseña">
+  <input id="confirmPassword" type="password" placeholder="Confirmar contraseña">
 
-  <button onclick="register()">Registrarse</button>
+  <button id="registerBtn" onclick="register()">Registrarse</button>
+
+  <p id="error" style="color:#ef4444; text-align:center;"></p>
+  <p style="text-align:center;">
+    ¿Ya tienes cuenta? <a href="login.html">Inicia sesión</a>
+  </p>
 </div>
 
 <script>
+
 function register(){
 
   const userInput = document.getElementById("username");
   const emailInput = document.getElementById("email");
   const passInput = document.getElementById("password");
+  const confirmInput = document.getElementById("confirmPassword");
+  const error = document.getElementById("error");
+  const btn = document.getElementById("registerBtn");
 
-  // 🔒 VALIDACIÓN
-  if (!userInput.value || !emailInput.value || !passInput.value) {
-    alert("Completa todos los campos");
+  error.innerText = "";
+
+  // 🔒 VALIDACIONES
+  if (!userInput.value.trim() || !emailInput.value.trim() || !passInput.value.trim()) {
+    error.innerText = "Completa todos los campos";
     return;
   }
+
+  // email válido
+  const emailRegex = /\S+@\S+\.\S+/;
+  if (!emailRegex.test(emailInput.value)) {
+    error.innerText = "Email inválido";
+    return;
+  }
+
+  // contraseña mínima
+  if (passInput.value.length < 6) {
+    error.innerText = "La contraseña debe tener mínimo 6 caracteres";
+    return;
+  }
+
+  // confirmar contraseña
+  if (passInput.value !== confirmInput.value) {
+    error.innerText = "Las contraseñas no coinciden";
+    return;
+  }
+
+  // 🔄 UI CARGA
+  btn.disabled = true;
+  btn.innerText = "Registrando...";
 
   fetch("https://foro-trabajos.onrender.com/register", {
     method:"POST",
     headers:{"Content-Type":"application/json"},
     body: JSON.stringify({
-      username: userInput.value,
-      email: emailInput.value,
+      username: userInput.value.trim(),
+      email: emailInput.value.trim(),
       password: passInput.value
     })
   })
-  .then(res => res.text())
+  .then(async res => {
+    const text = await res.text();
+
+    if (!res.ok) throw new Error(text);
+
+    return text;
+  })
   .then(data => {
-    alert(data);
+    alert("✅ " + data);
     window.location.href = "login.html";
   })
   .catch(err => {
-    console.log(err);
-    alert("Error al registrar");
+    error.innerText = err.message || "Error al registrar";
+    btn.disabled = false;
+    btn.innerText = "Registrarse";
   });
 }
+
 </script>
 
 </body>

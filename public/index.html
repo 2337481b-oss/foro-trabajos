@@ -83,14 +83,18 @@ async function loadPosts(){
 
           </div>
 
-          <!-- 💬 COMENTARIOS -->
-          <div class="comments" id="comments-${post._id}">
-            <div id="list-${post._id}" class="loading">Cargando...</div>
+          <!-- 💬 COMENTARIOS OCULTOS -->
+          <div class="comments" id="comments-${post._id}" style="display:none;">
+            
+            <div id="list-${post._id}" class="loading">
+              ⏳ Cargando comentarios...
+            </div>
 
             <div class="comment-input">
               <input id="input-${post._id}" placeholder="Escribe un comentario...">
               <button onclick="addComment('${post._id}')">Enviar</button>
             </div>
+
           </div>
 
         </div>
@@ -147,10 +151,11 @@ function deletePost(id){
 function toggleComments(postId){
   const box = document.getElementById("comments-" + postId);
 
-  box.classList.toggle("active");
-
-  if (box.classList.contains("active")) {
+  if (box.style.display === "none") {
+    box.style.display = "block";
     loadComments(postId);
+  } else {
+    box.style.display = "none";
   }
 }
 

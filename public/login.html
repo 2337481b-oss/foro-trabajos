@@ -11,15 +11,27 @@
 
   <h2 id="formTitle">Iniciar Sesión</h2>
 
-  <!-- SOLO PARA REGISTRO -->
+  <!-- SOLO REGISTRO -->
   <input id="username" placeholder="Usuario" style="display:none;">
 
   <input id="email" placeholder="Email">
-  <input id="password" type="password" placeholder="Password">
+  
+  <div style="position:relative;">
+    <input id="password" type="password" placeholder="Contraseña">
+    <span onclick="togglePassword()" style="
+      position:absolute;
+      right:10px;
+      top:10px;
+      cursor:pointer;
+      color:#38bdf8;
+    ">👁️</span>
+  </div>
 
-  <button onclick="handleAction()">Entrar</button>
+  <button id="mainBtn" onclick="handleAction()">Entrar</button>
 
-  <p id="toggleText" onclick="toggleForm()" style="cursor:pointer; color:#38bdf8;">
+  <p id="error" style="color:#ef4444; text-align:center;"></p>
+
+  <p id="toggleText" onclick="toggleForm()" style="cursor:pointer; color:#38bdf8; text-align:center;">
     ¿No tienes cuenta? Regístrate
   </p>
 
@@ -29,7 +41,13 @@
 
 let isLogin = true;
 
-// 🔁 CAMBIAR ENTRE LOGIN Y REGISTER
+// 👁️ MOSTRAR / OCULTAR PASSWORD
+function togglePassword(){
+  const pass = document.getElementById("password");
+  pass.type = pass.type === "password" ? "text" : "password";
+}
+
+// 🔁 CAMBIAR FORMULARIO
 function toggleForm(){
   isLogin = !isLogin;
 
@@ -39,59 +57,101 @@ function toggleForm(){
   document.getElementById("username").style.display =
     isLogin ? "none" : "block";
 
-  document.querySelector("button").innerText =
+  document.getElementById("mainBtn").innerText =
     isLogin ? "Entrar" : "Registrarse";
 
   document.getElementById("toggleText").innerText =
     isLogin
     ? "¿No tienes cuenta? Regístrate"
     : "¿Ya tienes cuenta? Inicia sesión";
+
+  document.getElementById("error").innerText = "";
 }
 
-// 🚀 LOGIN O REGISTER
+// 🚀 ACCIÓN
 function handleAction(){
 
-  const email = document.getElementById("email").value;
-  const password = document.getElementById("password").value;
-  const username = document.getElementById("username").value;
+  const email = document.getElementById("email").value.trim();
+  const password = document.getElementById("password").value.trim();
+  const username = document.getElementById("username").value.trim();
+  const error = document.getElementById("error");
+  const btn = document.getElementById("mainBtn");
 
+  error.innerText = "";
+
+  // 🔒 VALIDACIONES
   if (!email || !password || (!isLogin && !username)) {
-    alert("Completa todos los campos");
+    error.innerText = "Completa todos los campos";
     return;
   }
 
+  // validar email
+  const emailRegex = /\S+@\S+\.\S+/;
+  if (!emailRegex.test(email)) {
+    error.innerText = "Email inválido";
+    return;
+  }
+
+  // 🔄 LOADING
+  btn.disabled = true;
+  btn.innerText = isLogin ? "Entrando..." : "Registrando...";
+
   if (isLogin) {
+
     // 🔑 LOGIN
     fetch("https://foro-trabajos.onrender.com/login", {
       method:"POST",
       headers:{"Content-Type":"application/json"},
       body: JSON.stringify({ email, password })
     })
-    .then(res => res.json())
-    .then(data => {
+    .then(async res => {
+      const data = await res.json();
 
-      if (!data.user) {
-        alert(data);
-        return;
-      }
+      if (!data.user) throw new Error(data);
+
+      return data;
+    })
+    .then(data => {
 
       localStorage.setItem("userId", data.user._id);
       localStorage.setItem("username", data.user.username);
 
       window.location.href = "index.html";
+    })
+    .catch(err => {
+      error.innerText = err.message || "Error al iniciar sesión";
+      btn.disabled = false;
+      btn.innerText = "Entrar";
     });
 
   } else {
+
     // 🔐 REGISTER
     fetch("https://foro-trabajos.onrender.com/register", {
       method:"POST",
       headers:{"Content-Type":"application/json"},
       body: JSON.stringify({ username, email, password })
     })
-    .then(res => res.text())
-    .then(data => {
-      alert(data);
-      toggleForm(); // volver a login
+    .then(async res => {
+      const text = await res.text();
+
+      if (!res.ok) throw new Error(text);
+
+      return text;
+    })
+    .then(() => {
+      error.style.color = "#22c55e";
+      error.innerText = "Cuenta creada ✔ Ahora inicia sesión";
+
+      toggleForm();
+
+      btn.disabled = false;
+      btn.innerText = "Entrar";
+    })
+    .catch(err => {
+      error.innerText = err.message || "Error al registrar";
+      btn.disabled = false;
+      btn.innerText = "Registrarse";
     });
   }
 }

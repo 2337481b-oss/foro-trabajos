@@ -58,48 +58,47 @@ const Message = mongoose.model("Message", {
 
 // 🔐 REGISTER
 app.post("/register", async (req, res) => {
-  if (!req.body.email || !req.body.password) {
-    return res.status(400).send("Datos incompletos");
-  }
+  const { username, email, password } = req.body;
 
-  const existingUser = await User.findOne({ email: req.body.email });
-  if (existingUser) {
+  if (!username || !email || !password)
+    return res.status(400).send("Datos incompletos");
+
+  if (password.length < 4)
+    return res.status(400).send("Contraseña muy corta");
+
+  const existingUser = await User.findOne({ email });
+  if (existingUser)
     return res.status(400).send("El usuario ya existe");
-  }
 
   try {
-    const hashed = await bcrypt.hash(req.body.password, 10);
+    const hashed = await bcrypt.hash(password, 10);
 
-    const user = new User({
-      username: req.body.username,
-      email: req.body.email,
-      password: hashed
-    });
+    await new User({ username, email, password: hashed }).save();
 
-    await user.save();
     res.send("Usuario registrado");
-
-  } catch (error) {
-    console.log(error);
+  } catch (err) {
     res.status(500).send("Error al registrar usuario");
   }
 });
 
 // 🔑 LOGIN
 app.post("/login", async (req, res) => {
-  const user = await User.findOne({ email: req.body.email });
+  const { email, password } = req.body;
+
+  const user = await User.findOne({ email });
   if (!user) return res.status(400).send("No existe");
 
-  const valid = await bcrypt.compare(req.body.password, user.password);
+  const valid = await bcrypt.compare(password, user.password);
   if (!valid) return res.status(400).send("Contraseña incorrecta");
 
-  const token = jwt.sign({ id: user._id }, "secreto");
+  const token = jwt.sign({ id: user._id }, "secreto", { expiresIn: "7d" });
+
   res.json({ token, user });
 });
 
 // 📂 CLOUDINARY STORAGE
 const storage = new CloudinaryStorage({
-  cloudinary: cloudinary,
+  cloudinary,
   params: {
     folder: "foro-trabajos",
     allowed_formats: ["jpg", "png", "jpeg"]
@@ -111,25 +110,29 @@ const upload = multer({ storage });
 // 📝 CREAR POST
 app.post("/post", upload.single("media"), async (req, res) => {
   try {
+    const { title, description, userId } = req.body;
+
+    if (!title || !description)
+      return res.status(400).send("Datos incompletos");
+
     const post = new Post({
-      title: req.body.title,
-      description: req.body.description,
+      title: title.slice(0, 100),
+      description: description.slice(0, 500),
       media: req.file ? req.file.path : null,
-      userId: req.body.userId
+      userId
     });
 
     await post.save();
     res.send("Publicación creada");
 
   } catch (err) {
-    console.log(err);
     res.status(500).send("Error al publicar");
   }
 });
 
-// 📄 OBTENER POSTS
+// 📄 POSTS
 app.get("/posts", async (req, res) => {
-  const posts = await Post.find().sort({ _id: -1 });
+  const posts = await Post.find().sort({ _id: -1 }).limit(50);
   res.json(posts);
 });
 
@@ -140,43 +143,34 @@ app.post("/like/:id", async (req, res) => {
       $inc: { likes: 1 }
     });
     res.send("Like agregado");
-  } catch (err) {
+  } catch {
     res.status(500).send("Error al dar like");
   }
 });
 
-// 🗑 ELIMINAR POST + IMAGEN + COMENTARIOS
+// 🗑 ELIMINAR POST
 app.delete("/post/:id", async (req, res) => {
   try {
     const post = await Post.findById(req.params.id);
 
-    if (!post) {
-      return res.status(404).send("Post no encontrado");
-    }
+    if (!post) return res.status(404).send("Post no encontrado");
 
-    if (post.userId !== req.body.userId) {
+    if (post.userId !== req.body.userId)
       return res.status(403).send("No autorizado");
-    }
 
-    // 🧹 eliminar imagen de Cloudinary
+    // eliminar imagen
     if (post.media) {
-      const parts = post.media.split("/");
-      const fileName = parts[parts.length - 1];
+      const fileName = post.media.split("/").pop();
       const publicId = "foro-trabajos/" + fileName.split(".")[0];
-
       await cloudinary.uploader.destroy(publicId);
     }
 
-    // 🧹 eliminar post
     await Post.findByIdAndDelete(req.params.id);
-
-    // 🧹 eliminar comentarios
     await Comment.deleteMany({ postId: req.params.id });
 
     res.send("Post eliminado");
 
-  } catch (err) {
-    console.log(err);
+  } catch {
     res.status(500).send("Error al eliminar");
   }
 });
@@ -184,21 +178,23 @@ app.delete("/post/:id", async (req, res) => {
 // 💬 CREAR COMENTARIO
 app.post("/comment", async (req, res) => {
   try {
-    if (!req.body.postId || !req.body.content) {
+    const { postId, username, content } = req.body;
+
+    if (!postId || !content)
       return res.status(400).send("Datos incompletos");
-    }
 
-    const comment = new Comment({
-      postId: req.body.postId,
-      username: req.body.username,
-      content: req.body.content
-    });
+    if (content.length > 300)
+      return res.status(400).send("Comentario muy largo");
 
-    await comment.save();
+    await new Comment({
+      postId,
+      username,
+      content
+    }).save();
+
     res.send("Comentario agregado");
 
-  } catch (err) {
-    console.log(err);
+  } catch {
     res.status(500).send("Error al comentar");
   }
 });
@@ -207,21 +203,24 @@ app.post("/comment", async (req, res) => {
 app.get("/comments/:postId", async (req, res) => {
   try {
     const comments = await Comment.find({ postId: req.params.postId })
-      .sort({ createdAt: -1 });
+      .sort({ createdAt: -1 })
+      .limit(50);
 
     res.json(comments);
 
-  } catch (err) {
+  } catch {
     res.status(500).send("Error al obtener comentarios");
   }
 });
 
-// 🔢 CONTAR COMENTARIOS (para el botón 💬)
+// 🔢 CONTAR COMENTARIOS (OPTIMIZADO)
 app.get("/comments-count/:postId", async (req, res) => {
   try {
-    const count = await Comment.countDocuments({ postId: req.params.postId });
+    const count = await Comment.countDocuments({
+      postId: req.params.postId
+    });
     res.json({ count });
-  } catch (err) {
+  } catch {
     res.status(500).send("Error al contar comentarios");
   }
 });
@@ -229,11 +228,9 @@ app.get("/comments-count/:postId", async (req, res) => {
 // 💬 MENSAJES
 app.post("/message", async (req, res) => {
   try {
-    const msg = new Message(req.body);
-    await msg.save();
+    await new Message(req.body).save();
     res.send("Mensaje enviado");
-
-  } catch (err) {
+  } catch {
     res.status(500).send("Error al enviar mensaje");
   }
 });

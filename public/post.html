@@ -30,7 +30,7 @@ if (!localStorage.getItem("userId")) {
   <h2>Nueva Publicación</h2>
 
   <input id="title" placeholder="Título">
-  <input id="description" placeholder="Descripción">
+  <input id="description" placeholder="¿Qué quieres compartir?">
 
   <!-- INPUT -->
   <input type="file" id="media" accept="image/*" onchange="previewImage()">
@@ -50,8 +50,8 @@ if (!localStorage.getItem("userId")) {
 
 <script>
 
-// 👤 NOMBRE USUARIO
-document.getElementById("userName").innerText = 
+// 👤 USERNAME
+document.getElementById("userName").innerText =
   "👤 " + (localStorage.getItem("username") || "Usuario");
 
 // 🚪 LOGOUT
@@ -157,9 +157,12 @@ function upload(){
 
     status.innerText = "✅ Publicado correctamente";
 
+    // 🔥 EFECTO UX
+    btn.innerText = "✔ Publicado";
+
     setTimeout(() => {
       window.location.href = "index.html";
-    }, 1000);
+    }, 900);
   })
   .catch(err => {
     console.log(err);
@@ -169,6 +172,13 @@ function upload(){
     btn.innerText = "Publicar";
   });
 }
+
+// 🔥 ENTER PARA PUBLICAR
+document.addEventListener("keydown", (e) => {
+  if (e.key === "Enter") {
+    upload();
+  }
+});
 
 </script>
 
