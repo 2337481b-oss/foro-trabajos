@@ -51,10 +51,10 @@ async function loadPosts(){
     const container = document.getElementById("posts");
     container.innerHTML = "";
 
-    data.reverse().forEach(post => {
+    data.forEach(post => {
 
       container.innerHTML += `
-        <div class="card post">
+        <div class="card post" id="post-${post._id}">
 
           <div class="post-header">
             👤 Usuario
@@ -69,20 +69,33 @@ async function loadPosts(){
 
           <div class="post-actions">
 
-            <button onclick="likePost('${post._id}')">
+            <button onclick="likePost('${post._id}', this)">
               ❤️ <span id="likes-${post._id}">${post.likes || 0}</span>
             </button>
 
-            <button onclick="goToComments('${post._id}')">
-              💬 <span id="count-${post._id}">...</span>
+            <button onclick="toggleComments('${post._id}')">
+              💬 <span id="count-${post._id}">0</span>
             </button>
 
+            ${post.userId === localStorage.getItem("userId") ? `
+              <button onclick="deletePost('${post._id}')">🗑</button>
+            ` : ""}
+
+          </div>
+
+          <!-- 💬 COMENTARIOS -->
+          <div class="comments" id="comments-${post._id}">
+            <div id="list-${post._id}" class="loading">Cargando...</div>
+
+            <div class="comment-input">
+              <input id="input-${post._id}" placeholder="Escribe un comentario...">
+              <button onclick="addComment('${post._id}')">Enviar</button>
+            </div>
           </div>
 
         </div>
       `;
 
-      // cargar número de comentarios
       loadCommentCount(post._id);
     });
 
@@ -91,20 +104,100 @@ async function loadPosts(){
   }
 }
 
-// ❤️ LIKE SIN RECARGAR
-function likePost(id){
+// ❤️ LIKE CON ANIMACIÓN
+function likePost(id, btn){
+
   fetch(`https://foro-trabajos.onrender.com/like/${id}`, {
     method:"POST"
   })
   .then(() => {
+
     const el = document.getElementById("likes-" + id);
     el.innerText = parseInt(el.innerText) + 1;
+
+    // animación ❤️
+    btn.classList.add("liked");
+
+    setTimeout(() => {
+      btn.classList.remove("liked");
+    }, 300);
   });
 }
 
-// 💬 IR A COMENTARIOS
-function goToComments(postId){
-  window.location.href = `comments.html?postId=${postId}`;
+// 🗑 ELIMINAR POST
+function deletePost(id){
+
+  if (!confirm("¿Eliminar publicación?")) return;
+
+  fetch(`https://foro-trabajos.onrender.com/post/${id}`, {
+    method:"DELETE",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({
+      userId: localStorage.getItem("userId")
+    })
+  })
+  .then(res => res.text())
+  .then(msg => {
+    alert(msg);
+    document.getElementById("post-" + id).remove();
+  });
+}
+
+// 💬 MOSTRAR/OCULTAR (tipo Facebook)
+function toggleComments(postId){
+  const box = document.getElementById("comments-" + postId);
+
+  box.classList.toggle("active");
+
+  if (box.classList.contains("active")) {
+    loadComments(postId);
+  }
+}
+
+// 💬 CARGAR COMENTARIOS
+function loadComments(postId){
+  fetch(`https://foro-trabajos.onrender.com/comments/${postId}`)
+  .then(res => res.json())
+  .then(data => {
+    const list = document.getElementById("list-" + postId);
+    list.innerHTML = "";
+
+    if (data.length === 0) {
+      list.innerHTML = `<p style="opacity:0.6;">Sin comentarios</p>`;
+      return;
+    }
+
+    data.forEach(c => {
+      list.innerHTML += `
+        <div class="comment">
+          <strong>${c.username}:</strong> ${c.content}
+        </div>
+      `;
+    });
+  });
+}
+
+// 💬 AGREGAR COMENTARIO
+function addComment(postId){
+  const input = document.getElementById("input-" + postId);
+  const text = input.value;
+
+  if (!text.trim()) return;
+
+  fetch("https://foro-trabajos.onrender.com/comment", {
+    method:"POST",
+    headers:{"Content-Type":"application/json"},
+    body: JSON.stringify({
+      postId,
+      username: localStorage.getItem("username"),
+      content: text
+    })
+  })
+  .then(() => {
+    input.value = "";
+    loadComments(postId);
+    loadCommentCount(postId);
+  });
 }
 
 // 🔢 CONTAR COMENTARIOS
@@ -117,7 +210,7 @@ function loadCommentCount(postId){
   });
 }
 
-// 🚀 INICIAR
+// 🚀 INIT
 loadPosts();
 
 </script>

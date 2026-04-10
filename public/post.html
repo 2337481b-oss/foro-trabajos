@@ -67,15 +67,16 @@ function previewImage(){
 
   if(!file) return;
 
-  // 🔒 VALIDACIONES
+  // 🔒 VALIDAR TIPO
   if(!file.type.startsWith("image/")){
-    alert("Solo puedes subir imágenes");
+    alert("❌ Solo puedes subir imágenes");
     mediaInput.value = "";
     return;
   }
 
+  // 🔒 VALIDAR TAMAÑO
   if(file.size > 5 * 1024 * 1024){
-    alert("La imagen es muy grande (máx 5MB)");
+    alert("❌ Imagen muy grande (máx 5MB)");
     mediaInput.value = "";
     return;
   }
@@ -117,9 +118,12 @@ function upload(){
 
   // 🔒 VALIDACIÓN
   if (!titleInput.value.trim() || !descInput.value.trim()) {
-    alert("Completa todos los campos");
+    alert("⚠️ Completa todos los campos");
     return;
   }
+
+  // 🚫 EVITAR DOBLE CLICK
+  if (btn.disabled) return;
 
   // 🔄 UI DE CARGA
   btn.disabled = true;
@@ -144,7 +148,7 @@ function upload(){
     if (!res.ok) throw new Error("Error servidor");
     return res.text();
   })
-  .then(data => {
+  .then(() => {
 
     // 🔁 LIMPIAR FORM
     titleInput.value = "";
@@ -155,12 +159,12 @@ function upload(){
 
     setTimeout(() => {
       window.location.href = "index.html";
-    }, 1200);
+    }, 1000);
   })
   .catch(err => {
     console.log(err);
-    status.innerText = "❌ Error al subir";
 
+    status.innerText = "❌ Error al subir publicación";
     btn.disabled = false;
     btn.innerText = "Publicar";
   });

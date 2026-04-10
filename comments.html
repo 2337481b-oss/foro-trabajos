@@ -7,6 +7,7 @@
 
 <body>
 
+<!-- 🔒 PROTECCIÓN -->
 <script>
 if (!localStorage.getItem("userId")) {
   window.location.href = "login.html";
@@ -18,6 +19,7 @@ if (!localStorage.getItem("userId")) {
   <h3>💬 Comentarios</h3>
 
   <div>
+    <span id="userName"></span>
     <a href="index.html">⬅ Volver</a>
     <button onclick="logout()">Cerrar sesión</button>
   </div>
@@ -42,7 +44,11 @@ if (!localStorage.getItem("userId")) {
 
 <script>
 
-// 📌 OBTENER ID DEL POST
+// 👤 USER
+document.getElementById("userName").innerText =
+  "👤 " + (localStorage.getItem("username") || "Usuario");
+
+// 📌 POST ID
 const params = new URLSearchParams(window.location.search);
 const postId = params.get("postId");
 
@@ -53,43 +59,71 @@ function logout(){
 }
 
 // 📄 CARGAR POST
-fetch("https://foro-trabajos.onrender.com/posts")
-.then(res => res.json())
-.then(data => {
-  const post = data.find(p => p._id === postId);
+async function loadPost(){
+  try {
+    const res = await fetch("https://foro-trabajos.onrender.com/posts");
+    const data = await res.json();
 
-  if (!post) return;
+    const post = data.find(p => p._id === postId);
 
-  document.getElementById("post").innerHTML = `
-    <div class="card">
-      ${post.media ? `<img src="${post.media}" class="post-img">` : ""}
-      <h3>${post.title}</h3>
-      <p>${post.description}</p>
-    </div>
-  `;
-});
+    if (!post) {
+      document.getElementById("post").innerHTML = "Post no encontrado";
+      return;
+    }
+
+    document.getElementById("post").innerHTML = `
+      <div class="card post">
+
+        <div class="post-header">👤 Usuario</div>
+
+        ${post.media ? `<img src="${post.media}" class="post-img">` : ""}
+
+        <div class="post-body">
+          <h3>${post.title}</h3>
+          <p>${post.description}</p>
+        </div>
+
+        <div class="post-actions">
+          <span>❤️ ${post.likes || 0}</span>
+        </div>
+
+      </div>
+    `;
+
+  } catch (err) {
+    console.log(err);
+  }
+}
 
 // 💬 CARGAR COMENTARIOS
-function loadComments(){
-  fetch(`https://foro-trabajos.onrender.com/comments/${postId}`)
-  .then(res => res.json())
-  .then(data => {
+async function loadComments(){
+  try {
+    const res = await fetch(`https://foro-trabajos.onrender.com/comments/${postId}`);
+    const data = await res.json();
+
     const container = document.getElementById("comments");
     container.innerHTML = "";
 
+    if (data.length === 0) {
+      container.innerHTML = "<p>Sin comentarios</p>";
+      return;
+    }
+
     data.forEach(c => {
       container.innerHTML += `
-        <div class="card">
-          <strong>${c.username}</strong>
-          <p>${c.content}</p>
+        <div class="comment">
+          <strong>${c.username}:</strong> ${c.content}
         </div>
       `;
     });
-  });
+
+  } catch (err) {
+    console.log(err);
+  }
 }
 
 // 💬 AGREGAR COMENTARIO
-function addComment(){
+async function addComment(){
 
   const input = document.getElementById("input");
   const text = input.value;
@@ -99,22 +133,28 @@ function addComment(){
     return;
   }
 
-  fetch("https://foro-trabajos.onrender.com/comment", {
-    method:"POST",
-    headers:{"Content-Type":"application/json"},
-    body: JSON.stringify({
-      postId: postId,
-      username: localStorage.getItem("username"),
-      content: text
-    })
-  })
-  .then(() => {
+  try {
+    await fetch("https://foro-trabajos.onrender.com/comment", {
+      method:"POST",
+      headers:{"Content-Type":"application/json"},
+      body: JSON.stringify({
+        postId: postId,
+        username: localStorage.getItem("username"),
+        content: text
+      })
+    });
+
     input.value = "";
     loadComments();
-  });
+
+  } catch (err) {
+    console.log(err);
+    alert("Error al comentar");
+  }
 }
 
-// 🚀 INICIAL
+// 🚀 INIT
+loadPost();
 loadComments();
 
 </script>

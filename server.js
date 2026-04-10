@@ -58,7 +58,6 @@ const Message = mongoose.model("Message", {
 
 // 🔐 REGISTER
 app.post("/register", async (req, res) => {
-
   if (!req.body.email || !req.body.password) {
     return res.status(400).send("Datos incompletos");
   }
@@ -89,10 +88,10 @@ app.post("/register", async (req, res) => {
 // 🔑 LOGIN
 app.post("/login", async (req, res) => {
   const user = await User.findOne({ email: req.body.email });
-  if (!user) return res.send("No existe");
+  if (!user) return res.status(400).send("No existe");
 
   const valid = await bcrypt.compare(req.body.password, user.password);
-  if (!valid) return res.send("Contraseña incorrecta");
+  if (!valid) return res.status(400).send("Contraseña incorrecta");
 
   const token = jwt.sign({ id: user._id }, "secreto");
   res.json({ token, user });
@@ -130,7 +129,7 @@ app.post("/post", upload.single("media"), async (req, res) => {
 
 // 📄 OBTENER POSTS
 app.get("/posts", async (req, res) => {
-  const posts = await Post.find().sort({ _id: -1 }); // 👈 más nuevos primero
+  const posts = await Post.find().sort({ _id: -1 });
   res.json(posts);
 });
 
@@ -141,9 +140,44 @@ app.post("/like/:id", async (req, res) => {
       $inc: { likes: 1 }
     });
     res.send("Like agregado");
-
   } catch (err) {
     res.status(500).send("Error al dar like");
+  }
+});
+
+// 🗑 ELIMINAR POST + IMAGEN + COMENTARIOS
+app.delete("/post/:id", async (req, res) => {
+  try {
+    const post = await Post.findById(req.params.id);
+
+    if (!post) {
+      return res.status(404).send("Post no encontrado");
+    }
+
+    if (post.userId !== req.body.userId) {
+      return res.status(403).send("No autorizado");
+    }
+
+    // 🧹 eliminar imagen de Cloudinary
+    if (post.media) {
+      const parts = post.media.split("/");
+      const fileName = parts[parts.length - 1];
+      const publicId = "foro-trabajos/" + fileName.split(".")[0];
+
+      await cloudinary.uploader.destroy(publicId);
+    }
+
+    // 🧹 eliminar post
+    await Post.findByIdAndDelete(req.params.id);
+
+    // 🧹 eliminar comentarios
+    await Comment.deleteMany({ postId: req.params.id });
+
+    res.send("Post eliminado");
+
+  } catch (err) {
+    console.log(err);
+    res.status(500).send("Error al eliminar");
   }
 });
 
@@ -179,6 +213,16 @@ app.get("/comments/:postId", async (req, res) => {
 
   } catch (err) {
     res.status(500).send("Error al obtener comentarios");
+  }
+});
+
+// 🔢 CONTAR COMENTARIOS (para el botón 💬)
+app.get("/comments-count/:postId", async (req, res) => {
+  try {
+    const count = await Comment.countDocuments({ postId: req.params.postId });
+    res.json({ count });
+  } catch (err) {
+    res.status(500).send("Error al contar comentarios");
   }
 });
 
