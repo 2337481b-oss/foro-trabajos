@@ -158,9 +158,12 @@ async function auth(req, res, next) {
 async function buildPostsResponse(posts, currentUserId = "") {
   const authorIds = [...new Set(posts.map((post) => post.userId).filter(Boolean))];
   const postIds = posts.map((post) => String(post._id));
+  const validAuthorIds = authorIds.filter((id) => mongoose.Types.ObjectId.isValid(id));
 
   const [authors, commentCounts] = await Promise.all([
-    User.find({ _id: { $in: authorIds } }).select("username avatar").lean(),
+    validAuthorIds.length
+      ? User.find({ _id: { $in: validAuthorIds } }).select("username avatar").lean()
+      : Promise.resolve([]),
     Comment.aggregate([
       { $match: { postId: { $in: postIds } } },
       { $group: { _id: "$postId", count: { $sum: 1 } } },
@@ -173,17 +176,19 @@ async function buildPostsResponse(posts, currentUserId = "") {
   return posts.map((post) => {
     const author = authorsMap.get(String(post.userId));
 
-    return {
+      return {
       _id: String(post._id),
       title: post.title,
       description: post.description,
       media: post.media || "",
       userId: String(post.userId),
       likes: post.likes || 0,
-      likesUsers: post.likesUsers || [],
+      likesUsers: Array.isArray(post.likesUsers) ? post.likesUsers : [],
       createdAt: post.createdAt,
       commentCount: countsMap.get(String(post._id)) || 0,
-      likedByCurrentUser: Boolean(currentUserId && post.likesUsers.includes(currentUserId)),
+      likedByCurrentUser: Boolean(
+        currentUserId && Array.isArray(post.likesUsers) && post.likesUsers.includes(currentUserId)
+      ),
       author: author
         ? {
             _id: String(author._id),
@@ -404,6 +409,9 @@ app.post("/like/:id", auth, async (req, res) => {
     }
 
     const currentUserId = String(req.user._id);
+    if (!Array.isArray(post.likesUsers)) {
+      post.likesUsers = [];
+    }
 
     if (post.likesUsers.includes(currentUserId)) {
       return res.status(200).json({
@@ -542,7 +550,10 @@ app.get("/messages", auth, async (req, res) => {
     }
 
     const partnerIds = [...latestByUser.keys()];
-    const users = await User.find({ _id: { $in: partnerIds } }).select("-password").lean();
+    const validPartnerIds = partnerIds.filter((id) => mongoose.Types.ObjectId.isValid(id));
+    const users = validPartnerIds.length
+      ? await User.find({ _id: { $in: validPartnerIds } }).select("-password").lean()
+      : [];
     const usersMap = new Map(users.map((user) => [String(user._id), user]));
 
     const conversations = [...latestByUser.entries()].map(([partnerId, message]) => ({
