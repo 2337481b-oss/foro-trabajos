@@ -12,275 +12,430 @@ const cloudinary = require("cloudinary").v2;
 
 const app = express();
 
-app.use(express.json());
-app.use(cors());
+const JWT_SECRET = process.env.JWT_SECRET || "change-this-secret";
+const CLIENT_ORIGIN = process.env.CLIENT_ORIGIN;
+
+app.use(express.json({ limit: "2mb" }));
+app.use(
+  cors({
+    origin: CLIENT_ORIGIN ? [CLIENT_ORIGIN] : true,
+  })
+);
 app.use(express.static(path.join(__dirname, "public")));
 
-
-// ☁️ CLOUDINARY
 cloudinary.config({
   cloud_name: process.env.CLOUD_NAME,
   api_key: process.env.API_KEY,
-  api_secret: process.env.API_SECRET
+  api_secret: process.env.API_SECRET,
 });
 
-// 🔌 MONGODB
-mongoose.connect(process.env.MONGO_URI)
-.then(() => console.log("✅ Conectado a MongoDB"))
-.catch(err => console.log(err));
+mongoose
+  .connect(process.env.MONGO_URI)
+  .then(() => console.log("MongoDB conectado"))
+  .catch((err) => console.log(err));
 
+const { Schema } = mongoose;
 
-// =====================
-// 📦 MODELOS
-// =====================
+const userSchema = new Schema(
+  {
+    username: { type: String, required: true, trim: true, minlength: 3, maxlength: 30 },
+    email: { type: String, required: true, unique: true, lowercase: true, trim: true },
+    password: { type: String, required: true },
+    avatar: { type: String, default: "" },
+    bio: { type: String, default: "" },
+  },
+  { timestamps: true }
+);
 
-const User = mongoose.model("User", {
-  username: String,
-  email: String,
-  password: String,
-  avatar: { type: String, default: "" },
-  bio: { type: String, default: "" }
-});
+const postSchema = new Schema(
+  {
+    title: { type: String, required: true, trim: true, maxlength: 100 },
+    description: { type: String, required: true, trim: true, maxlength: 500 },
+    media: { type: String, default: "" },
+    userId: { type: String, required: true },
+    likes: { type: Number, default: 0 },
+    likesUsers: { type: [String], default: [] },
+  },
+  { timestamps: true }
+);
 
-const Post = mongoose.model("Post", {
-  title: String,
-  description: String,
-  media: String,
-  userId: String,
-  likes: { type: Number, default: 0 },
-  likesUsers: [String] // 🔥 evita likes duplicados
-});
+const commentSchema = new Schema(
+  {
+    postId: { type: String, required: true },
+    userId: { type: String, required: true },
+    username: { type: String, required: true, trim: true, maxlength: 30 },
+    content: { type: String, required: true, trim: true, maxlength: 300 },
+  },
+  { timestamps: true }
+);
 
-const Comment = mongoose.model("Comment", {
-  postId: String,
-  username: String,
-  content: String,
-  createdAt: { type: Date, default: Date.now }
-});
+const messageSchema = new Schema(
+  {
+    from: { type: String, required: true },
+    to: { type: String, required: true },
+    content: { type: String, required: true, trim: true, maxlength: 500 },
+    postId: { type: String, default: "" },
+  },
+  { timestamps: true }
+);
 
-const Message = mongoose.model("Message", {
-  from: String,
-  to: String,
-  content: String
-});
+const User = mongoose.models.User || mongoose.model("User", userSchema);
+const Post = mongoose.models.Post || mongoose.model("Post", postSchema);
+const Comment = mongoose.models.Comment || mongoose.model("Comment", commentSchema);
+const Message = mongoose.models.Message || mongoose.model("Message", messageSchema);
 
-
-// =====================
-// 🔐 AUTH MIDDLEWARE
-// =====================
-function auth(req, res, next){
-  const token = req.headers.authorization;
-
-  if (!token) return res.status(401).send("No autorizado");
-
-  try {
-    const decoded = jwt.verify(token, "secreto");
-    req.userId = decoded.id;
-    next();
-  } catch {
-    res.status(401).send("Token inválido");
-  }
-}
-
-
-// =====================
-// 🔐 REGISTER
-// =====================
-app.post("/register", async (req, res) => {
-  const { username, email, password } = req.body;
-
-  if (!username || !email || !password)
-    return res.status(400).send("Datos incompletos");
-
-  if (password.length < 4)
-    return res.status(400).send("Contraseña muy corta");
-
-  const existingUser = await User.findOne({ email });
-  if (existingUser)
-    return res.status(400).send("El usuario ya existe");
-
-  try {
-    const hashed = await bcrypt.hash(password, 10);
-
-    await new User({
-      username,
-      email,
-      password: hashed
-    }).save();
-
-    res.send("Usuario registrado");
-
-  } catch {
-    res.status(500).send("Error al registrar usuario");
-  }
-});
-
-
-// =====================
-// 🔑 LOGIN
-// =====================
-app.post("/login", async (req, res) => {
-  const { email, password } = req.body;
-
-  const user = await User.findOne({ email });
-  if (!user) return res.status(400).send("No existe");
-
-  const valid = await bcrypt.compare(password, user.password);
-  if (!valid) return res.status(400).send("Contraseña incorrecta");
-
-  const token = jwt.sign({ id: user._id }, "secreto", { expiresIn: "7d" });
-
-  res.json({ token, user });
-});
-
-
-// =====================
-// 📂 CLOUDINARY
-// =====================
 const storage = new CloudinaryStorage({
   cloudinary,
   params: {
     folder: "foro-trabajos",
-    allowed_formats: ["jpg", "png", "jpeg"]
+    allowed_formats: ["jpg", "png", "jpeg", "webp"],
+  },
+});
+
+const upload = multer({
+  storage,
+  limits: {
+    fileSize: 5 * 1024 * 1024,
+  },
+});
+
+function getTokenFromRequest(req) {
+  const authHeader = req.headers.authorization || "";
+  return authHeader.startsWith("Bearer ") ? authHeader.slice(7) : authHeader;
+}
+
+function serializeUser(user) {
+  if (!user) {
+    return null;
+  }
+
+  return {
+    _id: String(user._id),
+    username: user.username,
+    email: user.email,
+    avatar: user.avatar || "",
+    bio: user.bio || "",
+  };
+}
+
+function sanitizeText(value, maxLength) {
+  return String(value || "")
+    .replace(/\s+/g, " ")
+    .trim()
+    .slice(0, maxLength);
+}
+
+function isValidEmail(email) {
+  return /\S+@\S+\.\S+/.test(email);
+}
+
+function isStrongPassword(password) {
+  return password.length >= 6 && /[A-Z]/.test(password) && /[0-9]/.test(password);
+}
+
+async function auth(req, res, next) {
+  try {
+    const token = getTokenFromRequest(req);
+
+    if (!token) {
+      return res.status(401).send("No autorizado");
+    }
+
+    const decoded = jwt.verify(token, JWT_SECRET);
+    const user = await User.findById(decoded.id);
+
+    if (!user) {
+      return res.status(401).send("Usuario no encontrado");
+    }
+
+    req.user = user;
+    next();
+  } catch (error) {
+    res.status(401).send("Token invalido");
+  }
+}
+
+async function buildPostsResponse(posts, currentUserId = "") {
+  const authorIds = [...new Set(posts.map((post) => post.userId).filter(Boolean))];
+  const postIds = posts.map((post) => String(post._id));
+
+  const [authors, commentCounts] = await Promise.all([
+    User.find({ _id: { $in: authorIds } }).select("username avatar").lean(),
+    Comment.aggregate([
+      { $match: { postId: { $in: postIds } } },
+      { $group: { _id: "$postId", count: { $sum: 1 } } },
+    ]),
+  ]);
+
+  const authorsMap = new Map(authors.map((author) => [String(author._id), author]));
+  const countsMap = new Map(commentCounts.map((item) => [String(item._id), item.count]));
+
+  return posts.map((post) => {
+    const author = authorsMap.get(String(post.userId));
+
+    return {
+      _id: String(post._id),
+      title: post.title,
+      description: post.description,
+      media: post.media || "",
+      userId: String(post.userId),
+      likes: post.likes || 0,
+      likesUsers: post.likesUsers || [],
+      createdAt: post.createdAt,
+      commentCount: countsMap.get(String(post._id)) || 0,
+      likedByCurrentUser: Boolean(currentUserId && post.likesUsers.includes(currentUserId)),
+      author: author
+        ? {
+            _id: String(author._id),
+            username: author.username,
+            avatar: author.avatar || "",
+          }
+        : {
+            _id: String(post.userId),
+            username: "Usuario",
+            avatar: "",
+          },
+    };
+  });
+}
+
+function buildMessageResponse(message, currentUserId, usersMap) {
+  return {
+    _id: String(message._id),
+    from: String(message.from),
+    to: String(message.to),
+    content: message.content,
+    postId: message.postId || "",
+    createdAt: message.createdAt,
+    isOwn: String(message.from) === String(currentUserId),
+    fromUser: serializeUser(usersMap.get(String(message.from))),
+    toUser: serializeUser(usersMap.get(String(message.to))),
+  };
+}
+
+app.post("/register", async (req, res) => {
+  try {
+    const username = sanitizeText(req.body.username, 30);
+    const email = sanitizeText(req.body.email, 80).toLowerCase();
+    const password = String(req.body.password || "");
+
+    if (!username || !email || !password) {
+      return res.status(400).send("Completa todos los campos");
+    }
+
+    if (!isValidEmail(email)) {
+      return res.status(400).send("Email invalido");
+    }
+
+    if (!isStrongPassword(password)) {
+      return res
+        .status(400)
+        .send("La contrasena debe tener al menos 6 caracteres, 1 mayuscula y 1 numero");
+    }
+
+    const existingUser = await User.findOne({ email });
+    if (existingUser) {
+      return res.status(400).send("Ya existe una cuenta con ese email");
+    }
+
+    const hashedPassword = await bcrypt.hash(password, 10);
+
+    const user = await User.create({
+      username,
+      email,
+      password: hashedPassword,
+    });
+
+    const token = jwt.sign({ id: user._id }, JWT_SECRET, { expiresIn: "7d" });
+
+    res.status(201).json({
+      token,
+      user: serializeUser(user),
+    });
+  } catch (error) {
+    res.status(500).send("Error al registrar usuario");
   }
 });
 
-const upload = multer({ storage });
+app.post("/login", async (req, res) => {
+  try {
+    const email = sanitizeText(req.body.email, 80).toLowerCase();
+    const password = String(req.body.password || "");
 
+    if (!email || !password) {
+      return res.status(400).send("Completa todos los campos");
+    }
 
-// =====================
-// 👤 PERFIL
-// =====================
+    const user = await User.findOne({ email });
+    if (!user) {
+      return res.status(400).send("No existe una cuenta con ese email");
+    }
 
-// obtener perfil
+    const validPassword = await bcrypt.compare(password, user.password);
+    if (!validPassword) {
+      return res.status(400).send("Contrasena incorrecta");
+    }
+
+    const token = jwt.sign({ id: user._id }, JWT_SECRET, { expiresIn: "7d" });
+
+    res.json({
+      token,
+      user: serializeUser(user),
+    });
+  } catch (error) {
+    res.status(500).send("Error al iniciar sesion");
+  }
+});
+
 app.get("/user/:id", async (req, res) => {
   try {
-    const user = await User.findById(req.params.id).select("-password");
-    res.json(user);
-  } catch {
+    const user = await User.findById(req.params.id).select("-password").lean();
+
+    if (!user) {
+      return res.status(404).send("Usuario no encontrado");
+    }
+
+    res.json(serializeUser(user));
+  } catch (error) {
     res.status(500).send("Error al obtener usuario");
   }
 });
 
-// editar perfil
-app.put("/user/:id", async (req, res) => {
+app.put("/user/:id", auth, async (req, res) => {
   try {
-    const { username, bio } = req.body;
+    if (String(req.user._id) !== String(req.params.id)) {
+      return res.status(403).send("No autorizado");
+    }
+
+    const username = sanitizeText(req.body.username, 30);
+    const bio = sanitizeText(req.body.bio, 160);
 
     await User.findByIdAndUpdate(req.params.id, {
-      username,
-      bio
+      username: username || req.user.username,
+      bio,
     });
 
     res.send("Perfil actualizado");
-
-  } catch {
+  } catch (error) {
     res.status(500).send("Error al actualizar perfil");
   }
 });
 
-// subir avatar
-app.post("/upload-avatar", upload.single("avatar"), async (req, res) => {
+app.post("/upload-avatar", auth, upload.single("avatar"), async (req, res) => {
   try {
-    const { userId } = req.body;
-
-    if (!req.file)
+    if (!req.file) {
       return res.status(400).send("No hay imagen");
+    }
 
-    await User.findByIdAndUpdate(userId, {
-      avatar: req.file.path
+    await User.findByIdAndUpdate(req.user._id, {
+      avatar: req.file.path,
     });
 
     res.send("Avatar actualizado");
-
-  } catch {
+  } catch (error) {
     res.status(500).send("Error al subir avatar");
   }
 });
 
-
-// =====================
-// 📝 POSTS
-// =====================
-
-app.post("/post", upload.single("media"), async (req, res) => {
+app.post("/post", auth, upload.single("media"), async (req, res) => {
   try {
-    const { title, description, userId } = req.body;
+    const title = sanitizeText(req.body.title, 100);
+    const description = sanitizeText(req.body.description, 500);
 
-    if (!title || !description)
-      return res.status(400).send("Datos incompletos");
+    if (!title || !description) {
+      return res.status(400).send("Completa titulo y descripcion");
+    }
 
-    const post = new Post({
-      title: title.slice(0, 100),
-      description: description.slice(0, 500),
-      media: req.file ? req.file.path : null,
-      userId
+    const post = await Post.create({
+      title,
+      description,
+      media: req.file ? req.file.path : "",
+      userId: String(req.user._id),
     });
 
-    await post.save();
-    res.send("Publicación creada");
-
-  } catch {
+    const [responsePost] = await buildPostsResponse([post], String(req.user._id));
+    res.status(201).json(responsePost);
+  } catch (error) {
     res.status(500).send("Error al publicar");
   }
 });
 
-// feed
 app.get("/posts", async (req, res) => {
-  const posts = await Post.find().sort({ _id: -1 }).limit(50);
-  res.json(posts);
+  try {
+    const token = getTokenFromRequest(req);
+    let currentUserId = "";
+
+    if (token) {
+      try {
+        currentUserId = String(jwt.verify(token, JWT_SECRET).id);
+      } catch (error) {
+        currentUserId = "";
+      }
+    }
+
+    const posts = await Post.find().sort({ createdAt: -1, _id: -1 }).limit(50).lean();
+    const response = await buildPostsResponse(posts, currentUserId);
+
+    res.json(response);
+  } catch (error) {
+    res.status(500).send("Error al obtener publicaciones");
+  }
 });
 
-// posts por usuario
 app.get("/posts/user/:userId", async (req, res) => {
   try {
     const posts = await Post.find({ userId: req.params.userId })
-      .sort({ _id: -1 });
+      .sort({ createdAt: -1, _id: -1 })
+      .lean();
 
-    res.json(posts);
-  } catch {
+    const response = await buildPostsResponse(posts, req.params.userId);
+    res.json(response);
+  } catch (error) {
     res.status(500).send("Error al obtener posts");
   }
 });
 
-
-// =====================
-// ❤️ LIKE PRO (ANTI SPAM)
-// =====================
-app.post("/like/:id", async (req, res) => {
+app.post("/like/:id", auth, async (req, res) => {
   try {
-    const { userId } = req.body;
-
     const post = await Post.findById(req.params.id);
 
-    if (post.likesUsers.includes(userId)) {
-      return res.send("Ya diste like");
+    if (!post) {
+      return res.status(404).send("Post no encontrado");
     }
 
-    post.likesUsers.push(userId);
-    post.likes += 1;
+    const currentUserId = String(req.user._id);
 
+    if (post.likesUsers.includes(currentUserId)) {
+      return res.status(200).json({
+        likes: post.likes,
+        alreadyLiked: true,
+      });
+    }
+
+    post.likesUsers.push(currentUserId);
+    post.likes += 1;
     await post.save();
 
-    res.send("Like agregado");
-
-  } catch {
+    res.json({
+      likes: post.likes,
+      alreadyLiked: false,
+    });
+  } catch (error) {
     res.status(500).send("Error al dar like");
   }
 });
 
-
-// =====================
-// 🗑 DELETE POST
-// =====================
-app.delete("/post/:id", async (req, res) => {
+app.delete("/post/:id", auth, async (req, res) => {
   try {
     const post = await Post.findById(req.params.id);
 
-    if (!post) return res.status(404).send("Post no encontrado");
+    if (!post) {
+      return res.status(404).send("Post no encontrado");
+    }
 
-    if (post.userId !== req.body.userId)
+    if (String(post.userId) !== String(req.user._id)) {
       return res.status(403).send("No autorizado");
+    }
 
     if (post.media) {
       const fileName = post.media.split("/").pop();
@@ -288,37 +443,49 @@ app.delete("/post/:id", async (req, res) => {
       await cloudinary.uploader.destroy(publicId);
     }
 
-    await Post.findByIdAndDelete(req.params.id);
-    await Comment.deleteMany({ postId: req.params.id });
+    await Promise.all([
+      Post.findByIdAndDelete(req.params.id),
+      Comment.deleteMany({ postId: req.params.id }),
+      Message.deleteMany({ postId: req.params.id }),
+    ]);
 
     res.send("Post eliminado");
-
-  } catch {
+  } catch (error) {
     res.status(500).send("Error al eliminar");
   }
 });
 
-
-// =====================
-// 💬 COMMENTS
-// =====================
-
-app.post("/comment", async (req, res) => {
+app.post("/comment", auth, async (req, res) => {
   try {
-    const { postId, username, content } = req.body;
+    const postId = sanitizeText(req.body.postId, 40);
+    const content = sanitizeText(req.body.content, 300);
 
-    if (!postId || !content)
-      return res.status(400).send("Datos incompletos");
+    if (!postId || !content) {
+      return res.status(400).send("Comentario incompleto");
+    }
 
-    await new Comment({
+    const post = await Post.findById(postId);
+    if (!post) {
+      return res.status(404).send("Post no encontrado");
+    }
+
+    const comment = await Comment.create({
       postId,
-      username,
-      content: content.slice(0, 300)
-    }).save();
+      userId: String(req.user._id),
+      username: req.user.username,
+      content,
+    });
 
-    res.send("Comentario agregado");
-
-  } catch {
+    res.status(201).json({
+      _id: String(comment._id),
+      postId,
+      userId: String(req.user._id),
+      username: req.user.username,
+      content: comment.content,
+      createdAt: comment.createdAt,
+      isOwnComment: true,
+    });
+  } catch (error) {
     res.status(500).send("Error al comentar");
   }
 });
@@ -326,52 +493,147 @@ app.post("/comment", async (req, res) => {
 app.get("/comments/:postId", async (req, res) => {
   try {
     const comments = await Comment.find({ postId: req.params.postId })
-      .sort({ createdAt: -1 })
-      .limit(50);
+      .sort({ createdAt: -1, _id: -1 })
+      .limit(50)
+      .lean();
 
-    res.json(comments);
-
-  } catch {
+    res.json(
+      comments.map((comment) => ({
+        _id: String(comment._id),
+        postId: comment.postId,
+        userId: comment.userId,
+        username: comment.username,
+        content: comment.content,
+        createdAt: comment.createdAt,
+      }))
+    );
+  } catch (error) {
     res.status(500).send("Error al obtener comentarios");
   }
 });
 
 app.get("/comments-count/:postId", async (req, res) => {
   try {
-    const count = await Comment.countDocuments({
-      postId: req.params.postId
-    });
+    const count = await Comment.countDocuments({ postId: req.params.postId });
     res.json({ count });
-  } catch {
+  } catch (error) {
     res.status(500).send("Error al contar comentarios");
   }
 });
 
-
-// =====================
-// 💬 MENSAJES
-// =====================
-app.post("/message", async (req, res) => {
+app.get("/messages", auth, async (req, res) => {
   try {
-    await new Message(req.body).save();
-    res.send("Mensaje enviado");
-  } catch {
+    const currentUserId = String(req.user._id);
+    const messages = await Message.find({
+      $or: [{ from: currentUserId }, { to: currentUserId }],
+    })
+      .sort({ createdAt: -1, _id: -1 })
+      .lean();
+
+    const latestByUser = new Map();
+
+    for (const message of messages) {
+      const partnerId =
+        String(message.from) === currentUserId ? String(message.to) : String(message.from);
+
+      if (!latestByUser.has(partnerId)) {
+        latestByUser.set(partnerId, message);
+      }
+    }
+
+    const partnerIds = [...latestByUser.keys()];
+    const users = await User.find({ _id: { $in: partnerIds } }).select("-password").lean();
+    const usersMap = new Map(users.map((user) => [String(user._id), user]));
+
+    const conversations = [...latestByUser.entries()].map(([partnerId, message]) => ({
+      partner: serializeUser(usersMap.get(partnerId)),
+      latestMessage: buildMessageResponse(message, currentUserId, usersMap),
+    }));
+
+    res.json(conversations);
+  } catch (error) {
+    res.status(500).send("Error al obtener mensajes");
+  }
+});
+
+app.get("/messages/:userId", auth, async (req, res) => {
+  try {
+    const currentUserId = String(req.user._id);
+    const partnerId = String(req.params.userId);
+
+    const [partner, messages] = await Promise.all([
+      User.findById(partnerId).select("-password").lean(),
+      Message.find({
+        $or: [
+          { from: currentUserId, to: partnerId },
+          { from: partnerId, to: currentUserId },
+        ],
+      })
+        .sort({ createdAt: 1, _id: 1 })
+        .limit(100)
+        .lean(),
+    ]);
+
+    if (!partner) {
+      return res.status(404).send("Usuario no encontrado");
+    }
+
+    const usersMap = new Map([
+      [currentUserId, req.user.toObject()],
+      [partnerId, partner],
+    ]);
+
+    res.json({
+      partner: serializeUser(partner),
+      messages: messages.map((message) => buildMessageResponse(message, currentUserId, usersMap)),
+    });
+  } catch (error) {
+    res.status(500).send("Error al obtener la conversacion");
+  }
+});
+
+app.post("/message", auth, async (req, res) => {
+  try {
+    const currentUserId = String(req.user._id);
+    const to = sanitizeText(req.body.to, 40);
+    const content = sanitizeText(req.body.content, 500);
+    const postId = sanitizeText(req.body.postId, 40);
+
+    if (!to || !content) {
+      return res.status(400).send("Mensaje incompleto");
+    }
+
+    if (to === currentUserId) {
+      return res.status(400).send("No puedes enviarte un mensaje a ti mismo");
+    }
+
+    const recipient = await User.findById(to).select("-password").lean();
+    if (!recipient) {
+      return res.status(404).send("Destinatario no encontrado");
+    }
+
+    const message = await Message.create({
+      from: currentUserId,
+      to,
+      content,
+      postId,
+    });
+
+    const usersMap = new Map([
+      [currentUserId, req.user.toObject()],
+      [to, recipient],
+    ]);
+
+    res.status(201).json(buildMessageResponse(message.toObject(), currentUserId, usersMap));
+  } catch (error) {
     res.status(500).send("Error al enviar mensaje");
   }
 });
 
-
-// =====================
-// 🏠 HOME
-// =====================
 app.get("/", (req, res) => {
   res.sendFile(path.join(__dirname, "public", "index.html"));
 });
 
-
-// =====================
-// 🚀 SERVER
-// =====================
 app.listen(process.env.PORT || 3000, () => {
-  console.log("🚀 Servidor corriendo");
+  console.log("Servidor corriendo");
 });

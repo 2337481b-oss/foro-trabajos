@@ -1,0 +1,402 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Mensajes directos</title>
+  <link rel="stylesheet" href="css/styles.css">
+</head>
+<body>
+  <script>
+    if (!localStorage.getItem("token") || !localStorage.getItem("userId")) {
+      window.location.href = "login.html";
+    }
+  </script>
+
+  <div class="page-shell fade-in">
+    <header class="navbar">
+      <div class="brand">
+        <div class="brand-mark">FT</div>
+        <div class="brand-copy">
+          <h1>Mensajes directos</h1>
+          <p>Una bandeja simple para iniciar conversaciones desde las publicaciones.</p>
+        </div>
+      </div>
+
+      <nav class="nav-links">
+        <span class="user-chip" id="userChip"></span>
+        <a class="nav-link" href="index.html">Inicio</a>
+        <a class="nav-link" href="post.html">Publicar</a>
+        <a class="nav-link active" href="messages.html">Mensajes</a>
+        <button class="button-secondary" type="button" onclick="logout()">Cerrar sesion</button>
+      </nav>
+    </header>
+
+    <main class="messages-layout">
+      <aside class="panel sidebar-card">
+        <div class="counter-row">
+          <h2 class="section-subtitle">Conversaciones</h2>
+          <button class="button-secondary" type="button" onclick="loadConversations()">Actualizar</button>
+        </div>
+        <div class="conversation-list list-clean" id="conversationList">
+          <div class="empty-state">Cargando conversaciones...</div>
+        </div>
+      </aside>
+
+      <section class="panel thread-panel">
+        <div class="thread-header" id="threadHeader">
+          <div>
+            <h2 class="section-title">Selecciona una conversacion</h2>
+            <p class="section-subtitle">Tambien puedes llegar aqui desde el boton de mensaje en una publicacion.</p>
+          </div>
+        </div>
+
+        <div class="message-list" id="messageList">
+          <div class="empty-state">Aun no has abierto una conversacion.</div>
+        </div>
+
+        <div class="form-grid">
+          <div class="field-group">
+            <label class="field-label" for="messageInput">Escribe tu mensaje</label>
+            <textarea id="messageInput" maxlength="500" placeholder="Presentate, menciona el post y explica por que te interesa."></textarea>
+            <span class="helper-text" id="contextHint">Sin contexto de publicacion seleccionado.</span>
+          </div>
+
+          <div class="field-row">
+            <p class="status-message" id="status" aria-live="polite"></p>
+            <button type="button" id="sendBtn" onclick="sendMessage()">Enviar mensaje</button>
+          </div>
+        </div>
+      </section>
+    </main>
+  </div>
+
+  <script>
+    const API_BASE = window.location.origin;
+    const token = localStorage.getItem("token");
+    const currentUserId = localStorage.getItem("userId");
+    const currentUsername = localStorage.getItem("username") || "Usuario";
+
+    const conversationList = document.getElementById("conversationList");
+    const messageList = document.getElementById("messageList");
+    const threadHeader = document.getElementById("threadHeader");
+    const messageInput = document.getElementById("messageInput");
+    const sendBtn = document.getElementById("sendBtn");
+    const status = document.getElementById("status");
+    const contextHint = document.getElementById("contextHint");
+    const userChip = document.getElementById("userChip");
+
+    const query = new URLSearchParams(window.location.search);
+    let selectedUserId = query.get("userId") || "";
+    let selectedPostId = query.get("postId") || "";
+    let selectedPartner = null;
+    let postsMap = new Map();
+
+    userChip.textContent = currentUsername;
+
+    function logout() {
+      localStorage.clear();
+      window.location.href = "login.html";
+    }
+
+    function authHeaders(extra = {}) {
+      return {
+        ...extra,
+        Authorization: `Bearer ${token}`,
+      };
+    }
+
+    function escapeHtml(value) {
+      return String(value || "")
+        .replace(/&/g, "&amp;")
+        .replace(/</g, "&lt;")
+        .replace(/>/g, "&gt;")
+        .replace(/"/g, "&quot;")
+        .replace(/'/g, "&#39;");
+    }
+
+    function formatDate(dateString) {
+      if (!dateString) return "";
+
+      return new Date(dateString).toLocaleString("es-MX", {
+        dateStyle: "medium",
+        timeStyle: "short",
+      });
+    }
+
+    function renderAvatar(user, sizeClass = "avatar") {
+      if (user?.avatar) {
+        return `<img class="${sizeClass}" src="${user.avatar}" alt="Avatar de ${escapeHtml(user.username)}">`;
+      }
+
+      const initials = String(user?.username || "U")
+        .split(" ")
+        .filter(Boolean)
+        .slice(0, 2)
+        .map((part) => part[0].toUpperCase())
+        .join("");
+
+      return `<div class="avatar-placeholder ${sizeClass === "avatar-lg" ? "avatar-lg" : "avatar"}">${escapeHtml(initials)}</div>`;
+    }
+
+    function showStatus(message, variant) {
+      status.textContent = message;
+      status.className = `status-message ${variant}`;
+    }
+
+    function getPostLabel(postId) {
+      if (!postId) {
+        return "";
+      }
+
+      const post = postsMap.get(postId);
+      return post ? `Sobre: ${post.title}` : "Sobre una publicacion";
+    }
+
+    async function preloadPosts() {
+      try {
+        const response = await fetch(`${API_BASE}/posts`, {
+          headers: authHeaders(),
+        });
+
+        if (!response.ok) {
+          return;
+        }
+
+        const posts = await response.json();
+        postsMap = new Map(posts.map((post) => [post._id, post]));
+      } catch (error) {
+        postsMap = new Map();
+      }
+    }
+
+    async function loadConversations() {
+      conversationList.innerHTML = '<div class="empty-state">Cargando conversaciones...</div>';
+
+      try {
+        const response = await fetch(`${API_BASE}/messages`, {
+          headers: authHeaders(),
+        });
+
+        if (!response.ok) {
+          throw new Error("No se pudieron cargar las conversaciones");
+        }
+
+        const conversations = await response.json();
+
+        if (selectedUserId && !conversations.find((item) => item.partner?._id === selectedUserId)) {
+          await loadSinglePartner(selectedUserId);
+        }
+
+        renderConversationList(conversations);
+      } catch (error) {
+        conversationList.innerHTML = `<div class="empty-state">${escapeHtml(error.message)}</div>`;
+      }
+    }
+
+    async function loadSinglePartner(userId) {
+      try {
+        const response = await fetch(`${API_BASE}/user/${userId}`, {
+          headers: authHeaders(),
+        });
+
+        if (!response.ok) {
+          return;
+        }
+
+        selectedPartner = await response.json();
+      } catch (error) {
+        selectedPartner = null;
+      }
+    }
+
+    function renderConversationList(conversations) {
+      const items = [...conversations];
+
+      if (selectedPartner && !items.find((item) => item.partner?._id === selectedPartner._id)) {
+        items.unshift({
+          partner: selectedPartner,
+          latestMessage: {
+            content: "Nueva conversacion lista para iniciar",
+            createdAt: new Date().toISOString(),
+          },
+        });
+      }
+
+      if (!items.length) {
+        conversationList.innerHTML = '<div class="empty-state">Aun no tienes conversaciones. Abre una desde el feed.</div>';
+        return;
+      }
+
+      conversationList.innerHTML = items
+        .map(
+          (item) => `
+            <button
+              type="button"
+              class="button-secondary ${item.partner?._id === selectedUserId ? "active" : ""}"
+              onclick="selectConversation('${item.partner?._id || ""}')"
+            >
+              <div class="conversation-preview">
+                ${renderAvatar(item.partner)}
+                <div>
+                  <strong>${escapeHtml(item.partner?.username || "Usuario")}</strong>
+                  <p class="muted-text">${escapeHtml(item.latestMessage?.content || "Sin mensajes aun")}</p>
+                  <span class="small-counter">${escapeHtml(formatDate(item.latestMessage?.createdAt))}</span>
+                </div>
+              </div>
+            </button>
+          `
+        )
+        .join("");
+    }
+
+    async function selectConversation(userId) {
+      if (!userId) {
+        return;
+      }
+
+      selectedUserId = userId;
+      query.set("userId", userId);
+      if (selectedPostId) {
+        query.set("postId", selectedPostId);
+      }
+      history.replaceState({}, "", `messages.html?${query.toString()}`);
+      await loadThread();
+      await loadConversations();
+    }
+
+    async function loadThread() {
+      if (!selectedUserId) {
+        threadHeader.innerHTML = `
+          <div>
+            <h2 class="section-title">Selecciona una conversacion</h2>
+            <p class="section-subtitle">Tambien puedes llegar aqui desde el boton de mensaje en una publicacion.</p>
+          </div>
+        `;
+        messageList.innerHTML = '<div class="empty-state">Aun no has abierto una conversacion.</div>';
+        contextHint.textContent = "Sin contexto de publicacion seleccionado.";
+        sendBtn.disabled = true;
+        return;
+      }
+
+      sendBtn.disabled = false;
+      messageList.innerHTML = '<div class="empty-state">Cargando mensajes...</div>';
+
+      try {
+        const response = await fetch(`${API_BASE}/messages/${selectedUserId}`, {
+          headers: authHeaders(),
+        });
+
+        if (!response.ok) {
+          throw new Error(await response.text());
+        }
+
+        const data = await response.json();
+        selectedPartner = data.partner;
+
+        threadHeader.innerHTML = `
+          ${renderAvatar(data.partner, "avatar-lg")}
+          <div>
+            <h2 class="section-title">${escapeHtml(data.partner.username)}</h2>
+            <p class="section-subtitle">${escapeHtml(data.partner.bio || "Conversacion privada tipo networking profesional.")}</p>
+          </div>
+        `;
+
+        const contextText = getPostLabel(selectedPostId);
+        contextHint.textContent = contextText || "Sin contexto de publicacion seleccionado.";
+
+        if (!data.messages.length) {
+          messageList.innerHTML = '<div class="empty-state">Todavia no hay mensajes. Rompe el hielo con una presentacion breve.</div>';
+          return;
+        }
+
+        messageList.innerHTML = data.messages
+          .map((message) => {
+            const bubbleClass = message.isOwn ? "own" : "other";
+            const contextLabel =
+              message.postId && postsMap.has(message.postId)
+                ? `<span class="message-context">${escapeHtml(getPostLabel(message.postId))}</span>`
+                : message.postId
+                ? '<span class="message-context">Sobre una publicacion</span>'
+                : "";
+
+            return `
+              <article class="message-bubble ${bubbleClass}">
+                <div>${escapeHtml(message.content)}</div>
+                ${contextLabel}
+                <span class="message-meta">${escapeHtml(formatDate(message.createdAt))}</span>
+              </article>
+            `;
+          })
+          .join("");
+
+        messageList.scrollTop = messageList.scrollHeight;
+      } catch (error) {
+        messageList.innerHTML = `<div class="empty-state">${escapeHtml(error.message || "No se pudo cargar la conversacion")}</div>`;
+      }
+    }
+
+    async function sendMessage() {
+      const content = messageInput.value.trim();
+
+      if (!selectedUserId) {
+        showStatus("Selecciona primero una conversacion.", "status-error");
+        return;
+      }
+
+      if (!content) {
+        messageInput.focus();
+        return;
+      }
+
+      if (sendBtn.disabled) {
+        return;
+      }
+
+      sendBtn.disabled = true;
+      sendBtn.textContent = "Enviando...";
+      showStatus("Enviando mensaje...", "status-info");
+
+      try {
+        const response = await fetch(`${API_BASE}/message`, {
+          method: "POST",
+          headers: authHeaders({
+            "Content-Type": "application/json",
+          }),
+          body: JSON.stringify({
+            to: selectedUserId,
+            content,
+            postId: selectedPostId || "",
+          }),
+        });
+
+        if (!response.ok) {
+          throw new Error(await response.text());
+        }
+
+        messageInput.value = "";
+        showStatus("Mensaje enviado.", "status-success");
+        await loadThread();
+        await loadConversations();
+      } catch (error) {
+        showStatus(error.message || "No se pudo enviar el mensaje.", "status-error");
+      }
+
+      sendBtn.disabled = false;
+      sendBtn.textContent = "Enviar mensaje";
+    }
+
+    messageInput.addEventListener("keydown", (event) => {
+      if (event.ctrlKey && event.key === "Enter") {
+        sendMessage();
+      }
+    });
+
+    (async () => {
+      await preloadPosts();
+      await loadConversations();
+      await loadThread();
+    })();
+  </script>
+</body>
+</html>

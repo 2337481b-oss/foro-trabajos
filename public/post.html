@@ -1,207 +1,233 @@
 <!DOCTYPE html>
-<html>
+<html lang="es">
 <head>
-  <title>Publicar</title>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Nueva publicacion</title>
   <link rel="stylesheet" href="css/styles.css">
 </head>
-
 <body>
+  <script>
+    if (!localStorage.getItem("token") || !localStorage.getItem("userId")) {
+      window.location.href = "login.html";
+    }
+  </script>
 
-<!-- 🔒 PROTECCIÓN -->
-<script>
-if (!localStorage.getItem("userId")) {
-  window.location.href = "login.html";
-}
-</script>
+  <div class="page-shell fade-in">
+    <header class="navbar">
+      <div class="brand">
+        <div class="brand-mark">FT</div>
+        <div class="brand-copy">
+          <h1>Crear publicacion</h1>
+          <p>Comparte una oportunidad, proyecto o duda con mejor presentacion.</p>
+        </div>
+      </div>
 
-<!-- 🧭 NAVBAR -->
-<div class="navbar">
-  <h3>💼 Foro</h3>
+      <nav class="nav-links">
+        <span class="user-chip" id="userChip"></span>
+        <a class="nav-link" href="index.html">Inicio</a>
+        <a class="nav-link active" href="post.html">Publicar</a>
+        <a class="nav-link" href="messages.html">Mensajes</a>
+        <button class="button-secondary" type="button" onclick="logout()">Cerrar sesion</button>
+      </nav>
+    </header>
 
-  <div>
-    <span id="userName"></span>
-    <a href="index.html">Inicio</a>
-    <button onclick="logout()">Cerrar sesión</button>
+    <main class="layout-grid">
+      <section class="container">
+        <h2 class="section-title">Nueva publicacion</h2>
+        <p class="section-subtitle">
+          Mientras mas claro sea tu texto, mas facil sera que te contacten por mensaje directo.
+        </p>
+
+        <div class="form-grid">
+          <div class="field-group">
+            <div class="counter-row">
+              <label class="field-label" for="title">Titulo</label>
+              <span class="small-counter" id="titleCount">0 / 100</span>
+            </div>
+            <input id="title" maxlength="100" placeholder="Ej. Busco colaborador para app de gestion">
+          </div>
+
+          <div class="field-group">
+            <div class="counter-row">
+              <label class="field-label" for="description">Descripcion</label>
+              <span class="small-counter" id="descCount">0 / 500</span>
+            </div>
+            <textarea id="description" maxlength="500" placeholder="Explica que necesitas, que ofreces y como te pueden ayudar."></textarea>
+          </div>
+
+          <div class="field-group">
+            <label class="field-label" for="media">Imagen de apoyo</label>
+            <input type="file" id="media" accept="image/*">
+            <span class="helper-text">Opcional. JPG, PNG o WEBP de maximo 5 MB.</span>
+          </div>
+
+          <div class="file-preview" id="previewWrapper" style="display:none;">
+            <img id="preview" alt="Vista previa de la imagen seleccionada">
+          </div>
+
+          <div class="field-row">
+            <button class="button-secondary" type="button" id="removeBtn" style="display:none;" onclick="removeImage()">
+              Quitar imagen
+            </button>
+            <button type="button" id="publishBtn" onclick="publishPost()">Publicar</button>
+          </div>
+
+          <p class="status-message status-info" id="status" aria-live="polite"></p>
+        </div>
+      </section>
+
+      <aside class="panel sidebar-card">
+        <h2 class="section-subtitle">Checklist rapido</h2>
+        <ul class="list-clean">
+          <li class="empty-state">Usa un titulo corto y accionable.</li>
+          <li class="empty-state">Describe el objetivo, no solo la herramienta.</li>
+          <li class="empty-state">Las respuestas y mensajes directos quedaran mejor si tu post es concreto.</li>
+        </ul>
+      </aside>
+    </main>
   </div>
-</div>
 
-<!-- 📄 CONTENIDO -->
-<div class="container fade-in">
-  <h2>Nueva Publicación</h2>
+  <script>
+    const API_BASE = window.location.origin;
+    const token = localStorage.getItem("token");
+    const currentUsername = localStorage.getItem("username") || "Usuario";
 
-  <input id="title" maxlength="100" placeholder="Título">
-  <small id="titleCount">0/100</small>
-
-  <textarea id="description" maxlength="500" placeholder="¿Qué quieres compartir?" style="width:100%; height:100px;"></textarea>
-  <small id="descCount">0/500</small>
-
-  <!-- INPUT -->
-  <input type="file" id="media" accept="image/*" onchange="previewImage()">
-
-  <!-- PREVIEW -->
-  <img id="preview" style="display:none; margin-top:10px; width:100%; border-radius:10px;">
-
-  <!-- BOTÓN PARA QUITAR -->
-  <button id="removeBtn" onclick="removeImage()" style="display:none;">Quitar imagen</button>
-
-  <!-- BOTÓN PUBLICAR -->
-  <button id="publishBtn" onclick="upload()">Publicar</button>
-
-  <!-- MENSAJE -->
-  <p id="status" style="text-align:center;"></p>
-</div>
-
-<script>
-
-// 👤 USERNAME
-document.getElementById("userName").innerText =
-  "👤 " + (localStorage.getItem("username") || "Usuario");
-
-// 🚪 LOGOUT
-function logout(){
-  localStorage.clear();
-  window.location.href = "login.html";
-}
-
-// 📊 CONTADOR TEXTO
-const titleInput = document.getElementById("title");
-const descInput = document.getElementById("description");
-
-titleInput.addEventListener("input", () => {
-  document.getElementById("titleCount").innerText =
-    `${titleInput.value.length}/100`;
-});
-
-descInput.addEventListener("input", () => {
-  document.getElementById("descCount").innerText =
-    `${descInput.value.length}/500`;
-});
-
-// 👁️ PREVIEW
-function previewImage(){
-  const mediaInput = document.getElementById("media");
-  const file = mediaInput.files[0];
-
-  if(!file) return;
-
-  // 🔒 VALIDAR TIPO
-  if(!file.type.startsWith("image/")){
-    alert("❌ Solo puedes subir imágenes");
-    mediaInput.value = "";
-    return;
-  }
-
-  // 🔒 VALIDAR TAMAÑO
-  if(file.size > 5 * 1024 * 1024){
-    alert("❌ Imagen muy grande (máx 5MB)");
-    mediaInput.value = "";
-    return;
-  }
-
-  const reader = new FileReader();
-
-  reader.onload = function(e){
+    const titleInput = document.getElementById("title");
+    const descriptionInput = document.getElementById("description");
+    const mediaInput = document.getElementById("media");
     const preview = document.getElementById("preview");
+    const previewWrapper = document.getElementById("previewWrapper");
     const removeBtn = document.getElementById("removeBtn");
+    const publishBtn = document.getElementById("publishBtn");
+    const status = document.getElementById("status");
 
-    preview.src = e.target.result;
-    preview.style.display = "block";
-    removeBtn.style.display = "block";
-  }
+    document.getElementById("userChip").textContent = currentUsername;
 
-  reader.readAsDataURL(file);
-}
+    function logout() {
+      localStorage.clear();
+      window.location.href = "login.html";
+    }
 
-// ❌ QUITAR IMAGEN
-function removeImage(){
-  const mediaInput = document.getElementById("media");
-  const preview = document.getElementById("preview");
-  const removeBtn = document.getElementById("removeBtn");
+    function authHeaders(extra = {}) {
+      return {
+        ...extra,
+        Authorization: `Bearer ${token}`,
+      };
+    }
 
-  mediaInput.value = "";
-  preview.src = "";
-  preview.style.display = "none";
-  removeBtn.style.display = "none";
-}
+    function updateCounters() {
+      document.getElementById("titleCount").textContent = `${titleInput.value.length} / 100`;
+      document.getElementById("descCount").textContent = `${descriptionInput.value.length} / 500`;
+    }
 
-// 🚀 SUBIR
-function upload(){
+    function showStatus(message, variant) {
+      status.textContent = message;
+      status.className = `status-message ${variant}`;
+    }
 
-  const title = titleInput.value.trim();
-  const desc = descInput.value.trim();
-  const mediaInput = document.getElementById("media");
-  const status = document.getElementById("status");
-  const btn = document.getElementById("publishBtn");
+    function removeImage() {
+      mediaInput.value = "";
+      preview.src = "";
+      previewWrapper.style.display = "none";
+      removeBtn.style.display = "none";
+    }
 
-  // 🔒 VALIDACIÓN PRO
-  if (!title || !desc) {
-    status.style.color = "#ef4444";
-    status.innerText = "⚠️ Completa todos los campos";
-    return;
-  }
+    mediaInput.addEventListener("change", () => {
+      const [file] = mediaInput.files;
 
-  if (btn.disabled) return;
+      if (!file) {
+        removeImage();
+        return;
+      }
 
-  // 🔄 UI
-  btn.disabled = true;
-  btn.innerText = "Publicando...";
-  status.style.color = "#38bdf8";
-  status.innerText = "⏳ Subiendo publicación...";
+      if (!file.type.startsWith("image/")) {
+        showStatus("Solo puedes subir imagenes.", "status-error");
+        removeImage();
+        return;
+      }
 
-  const formData = new FormData();
-  formData.append("title", title);
-  formData.append("description", desc);
-  formData.append("userId", localStorage.getItem("userId"));
+      if (file.size > 5 * 1024 * 1024) {
+        showStatus("La imagen supera el limite de 5 MB.", "status-error");
+        removeImage();
+        return;
+      }
 
-  if (mediaInput.files.length > 0) {
-    formData.append("media", mediaInput.files[0]);
-  }
+      const reader = new FileReader();
+      reader.onload = (event) => {
+        preview.src = event.target.result;
+        previewWrapper.style.display = "block";
+        removeBtn.style.display = "inline-flex";
+        showStatus("Vista previa lista para publicar.", "status-info");
+      };
+      reader.readAsDataURL(file);
+    });
 
-  fetch("https://foro-trabajos.onrender.com/post", {
-    method:"POST",
-    body: formData
-  })
-  .then(async res => {
-    const text = await res.text();
-    if (!res.ok) throw new Error(text);
-    return text;
-  })
-  .then(() => {
+    async function publishPost() {
+      const title = titleInput.value.trim();
+      const description = descriptionInput.value.trim();
 
-    // 🔁 LIMPIAR
-    titleInput.value = "";
-    descInput.value = "";
-    removeImage();
+      if (!title || !description) {
+        showStatus("Completa el titulo y la descripcion.", "status-error");
+        return;
+      }
 
-    status.style.color = "#22c55e";
-    status.innerText = "✅ Publicado correctamente";
+      if (publishBtn.disabled) {
+        return;
+      }
 
-    btn.innerText = "✔ Publicado";
+      publishBtn.disabled = true;
+      publishBtn.textContent = "Publicando...";
+      showStatus("Subiendo publicacion...", "status-info");
 
-    // 🔥 REDIRECCIÓN SUAVE
-    setTimeout(() => {
-      window.location.href = "index.html";
-    }, 800);
-  })
-  .catch(err => {
-    console.log(err);
+      try {
+        const formData = new FormData();
+        formData.append("title", title);
+        formData.append("description", description);
 
-    status.style.color = "#ef4444";
-    status.innerText = err.message || "❌ Error al subir";
+        if (mediaInput.files[0]) {
+          formData.append("media", mediaInput.files[0]);
+        }
 
-    btn.disabled = false;
-    btn.innerText = "Publicar";
-  });
-}
+        const response = await fetch(`${API_BASE}/post`, {
+          method: "POST",
+          headers: authHeaders(),
+          body: formData,
+        });
 
-// ⌨️ CTRL + ENTER PARA PUBLICAR
-document.addEventListener("keydown", (e) => {
-  if (e.ctrlKey && e.key === "Enter") {
-    upload();
-  }
-});
+        if (!response.ok) {
+          throw new Error(await response.text());
+        }
 
-</script>
+        titleInput.value = "";
+        descriptionInput.value = "";
+        updateCounters();
+        removeImage();
+        showStatus("Publicacion creada. Ya puedes recibir mensajes directos desde tu post.", "status-success");
 
+        setTimeout(() => {
+          window.location.href = "index.html";
+        }, 900);
+      } catch (error) {
+        showStatus(error.message || "No se pudo publicar.", "status-error");
+        publishBtn.disabled = false;
+        publishBtn.textContent = "Publicar";
+        return;
+      }
+
+      publishBtn.textContent = "Publicado";
+    }
+
+    titleInput.addEventListener("input", updateCounters);
+    descriptionInput.addEventListener("input", updateCounters);
+
+    document.addEventListener("keydown", (event) => {
+      if (event.ctrlKey && event.key === "Enter") {
+        publishPost();
+      }
+    });
+
+    updateCounters();
+  </script>
 </body>
 </html>

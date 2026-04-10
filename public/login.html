@@ -1,193 +1,127 @@
 <!DOCTYPE html>
-<html>
+<html lang="es">
 <head>
-  <title>Login</title>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Iniciar sesion</title>
   <link rel="stylesheet" href="css/styles.css">
 </head>
-
 <body>
+  <script>
+    if (localStorage.getItem("token") && localStorage.getItem("userId")) {
+      window.location.href = "index.html";
+    }
+  </script>
 
-<script>
-// 🔒 Si ya está logueado → directo al feed
-if (localStorage.getItem("userId")) {
-  window.location.href = "index.html";
-}
-</script>
+  <main class="page-shell fade-in">
+    <section class="card form-card">
+      <div class="brand">
+        <div class="brand-mark">FT</div>
+        <div class="brand-copy">
+          <h2>Bienvenido de nuevo</h2>
+          <p>Entra para publicar, comentar y abrir mensajes directos desde el feed.</p>
+        </div>
+      </div>
 
-<div class="container fade-in">
+      <div class="form-grid">
+        <div class="field-group">
+          <label class="field-label" for="email">Email</label>
+          <input id="email" type="email" autocomplete="email" placeholder="tucorreo@ejemplo.com">
+        </div>
 
-  <h2 id="formTitle">Iniciar Sesión</h2>
+        <div class="field-group">
+          <div class="field-row">
+            <label class="field-label" for="password">Contrasena</label>
+            <button class="button-ghost" type="button" onclick="togglePassword()">Mostrar</button>
+          </div>
+          <input id="password" type="password" autocomplete="current-password" placeholder="Tu contrasena">
+        </div>
 
-  <!-- SOLO REGISTRO -->
-  <input id="username" placeholder="Usuario" style="display:none;">
+        <label class="helper-text">
+          <input type="checkbox" id="remember">
+          Recordar sesion en este navegador
+        </label>
 
-  <input id="email" placeholder="Email">
+        <button class="button-block" id="loginBtn" type="button" onclick="login()">Entrar</button>
+        <p class="status-message" id="status" aria-live="polite"></p>
 
-  <div style="position:relative;">
-    <input id="password" type="password" placeholder="Contraseña">
-    <span onclick="togglePassword()" style="
-      position:absolute;
-      right:10px;
-      top:10px;
-      cursor:pointer;
-      color:#38bdf8;
-    ">👁️</span>
-  </div>
+        <p class="helper-text">
+          Aun no tienes cuenta?
+          <a class="toggle-link" href="register.html">Creala aqui</a>
+        </p>
+      </div>
+    </section>
+  </main>
 
-  <!-- RECORDAR SESIÓN -->
-  <label style="font-size:14px;">
-    <input type="checkbox" id="remember"> Recordarme
-  </label>
+  <script>
+    const API_BASE = window.location.origin;
+    const passwordInput = document.getElementById("password");
+    const loginBtn = document.getElementById("loginBtn");
+    const status = document.getElementById("status");
 
-  <button id="mainBtn" onclick="handleAction()">Entrar</button>
+    function showStatus(message, variant) {
+      status.textContent = message;
+      status.className = `status-message ${variant}`;
+    }
 
-  <p id="error" style="color:#ef4444; text-align:center;"></p>
+    function togglePassword() {
+      passwordInput.type = passwordInput.type === "password" ? "text" : "password";
+    }
 
-  <p id="toggleText" onclick="toggleForm()" style="cursor:pointer; color:#38bdf8; text-align:center;">
-    ¿No tienes cuenta? Regístrate
-  </p>
+    async function login() {
+      const email = document.getElementById("email").value.trim();
+      const password = passwordInput.value.trim();
 
-</div>
-
-<script>
-
-let isLogin = true;
-
-// 👁️ PASSWORD
-function togglePassword(){
-  const pass = document.getElementById("password");
-  pass.type = pass.type === "password" ? "text" : "password";
-}
-
-// 🔁 CAMBIAR FORM
-function toggleForm(){
-  isLogin = !isLogin;
-
-  document.getElementById("formTitle").innerText =
-    isLogin ? "Iniciar Sesión" : "Crear cuenta";
-
-  document.getElementById("username").style.display =
-    isLogin ? "none" : "block";
-
-  document.getElementById("mainBtn").innerText =
-    isLogin ? "Entrar" : "Registrarse";
-
-  document.getElementById("toggleText").innerText =
-    isLogin
-    ? "¿No tienes cuenta? Regístrate"
-    : "¿Ya tienes cuenta? Inicia sesión";
-
-  document.getElementById("error").innerText = "";
-}
-
-// 🚀 LOGIN / REGISTER
-function handleAction(){
-
-  const email = document.getElementById("email").value.trim();
-  const password = document.getElementById("password").value.trim();
-  const username = document.getElementById("username").value.trim();
-  const remember = document.getElementById("remember").checked;
-
-  const error = document.getElementById("error");
-  const btn = document.getElementById("mainBtn");
-
-  error.innerText = "";
-
-  // 🔒 VALIDACIONES
-  if (!email || !password || (!isLogin && !username)) {
-    error.innerText = "Completa todos los campos";
-    return;
-  }
-
-  const emailRegex = /\S+@\S+\.\S+/;
-  if (!emailRegex.test(email)) {
-    error.innerText = "Email inválido";
-    return;
-  }
-
-  if (btn.disabled) return;
-
-  // 🔄 UI
-  btn.disabled = true;
-  btn.innerText = isLogin ? "Entrando..." : "Registrando...";
-
-  if (isLogin) {
-
-    // 🔑 LOGIN
-    fetch("https://foro-trabajos.onrender.com/login", {
-      method:"POST",
-      headers:{"Content-Type":"application/json"},
-      body: JSON.stringify({ email, password })
-    })
-    .then(async res => {
-      const data = await res.json();
-
-      if (!res.ok) throw new Error(data);
-
-      return data;
-    })
-    .then(data => {
-
-      // 💾 GUARDAR SESIÓN
-      localStorage.setItem("userId", data.user._id);
-      localStorage.setItem("username", data.user.username);
-      localStorage.setItem("token", data.token);
-
-      if (remember) {
-        localStorage.setItem("remember", "true");
+      if (!email || !password) {
+        showStatus("Completa email y contrasena.", "status-error");
+        return;
       }
 
-      // 🎯 REDIRECCIÓN
-      window.location.href = "index.html";
-    })
-    .catch(err => {
-      error.innerText = err.message || "Error al iniciar sesión";
-      btn.disabled = false;
-      btn.innerText = "Entrar";
+      if (loginBtn.disabled) {
+        return;
+      }
+
+      loginBtn.disabled = true;
+      loginBtn.textContent = "Entrando...";
+      showStatus("Validando tus datos...", "status-info");
+
+      try {
+        const response = await fetch(`${API_BASE}/login`, {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json",
+          },
+          body: JSON.stringify({ email, password }),
+        });
+
+        if (!response.ok) {
+          throw new Error(await response.text());
+        }
+
+        const data = await response.json();
+        localStorage.setItem("token", data.token);
+        localStorage.setItem("userId", data.user._id);
+        localStorage.setItem("username", data.user.username);
+
+        if (document.getElementById("remember").checked) {
+          localStorage.setItem("remember", "true");
+        } else {
+          localStorage.removeItem("remember");
+        }
+
+        window.location.href = "index.html";
+      } catch (error) {
+        showStatus(error.message || "No se pudo iniciar sesion.", "status-error");
+        loginBtn.disabled = false;
+        loginBtn.textContent = "Entrar";
+      }
+    }
+
+    passwordInput.addEventListener("keydown", (event) => {
+      if (event.key === "Enter") {
+        login();
+      }
     });
-
-  } else {
-
-    // 🔐 REGISTER
-    fetch("https://foro-trabajos.onrender.com/register", {
-      method:"POST",
-      headers:{"Content-Type":"application/json"},
-      body: JSON.stringify({ username, email, password })
-    })
-    .then(async res => {
-      const text = await res.text();
-
-      if (!res.ok) throw new Error(text);
-
-      return text;
-    })
-    .then(() => {
-
-      // 🔥 AUTO LOGIN (PRO)
-      return fetch("https://foro-trabajos.onrender.com/login", {
-        method:"POST",
-        headers:{"Content-Type":"application/json"},
-        body: JSON.stringify({ email, password })
-      });
-    })
-    .then(res => res.json())
-    .then(data => {
-
-      localStorage.setItem("userId", data.user._id);
-      localStorage.setItem("username", data.user.username);
-      localStorage.setItem("token", data.token);
-
-      window.location.href = "index.html";
-    })
-    .catch(err => {
-      error.innerText = err.message || "Error al registrar";
-      btn.disabled = false;
-      btn.innerText = "Registrarse";
-    });
-  }
-}
-
-</script>
-
+  </script>
 </body>
 </html>

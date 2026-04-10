@@ -1,163 +1,236 @@
 <!DOCTYPE html>
-<html>
+<html lang="es">
 <head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>Comentarios</title>
   <link rel="stylesheet" href="css/styles.css">
 </head>
-
 <body>
-
-<!-- 🔒 PROTECCIÓN -->
-<script>
-if (!localStorage.getItem("userId")) {
-  window.location.href = "login.html";
-}
-</script>
-
-<!-- 🧭 NAVBAR -->
-<div class="navbar">
-  <h3>💬 Comentarios</h3>
-
-  <div>
-    <span id="userName"></span>
-    <a href="index.html">⬅ Volver</a>
-    <button onclick="logout()">Cerrar sesión</button>
-  </div>
-</div>
-
-<div class="container fade-in">
-
-  <!-- POST -->
-  <div id="post"></div>
-
-  <!-- COMENTARIOS -->
-  <h3>Comentarios</h3>
-  <div id="comments"></div>
-
-  <!-- INPUT -->
-  <div class="comment-input">
-    <input id="input" placeholder="Escribe un comentario...">
-    <button onclick="addComment()">Enviar</button>
-  </div>
-
-</div>
-
-<script>
-
-// 👤 USER
-document.getElementById("userName").innerText =
-  "👤 " + (localStorage.getItem("username") || "Usuario");
-
-// 📌 POST ID
-const params = new URLSearchParams(window.location.search);
-const postId = params.get("postId");
-
-// 🚪 LOGOUT
-function logout(){
-  localStorage.clear();
-  window.location.href = "login.html";
-}
-
-// 📄 CARGAR POST
-async function loadPost(){
-  try {
-    const res = await fetch("https://foro-trabajos.onrender.com/posts");
-    const data = await res.json();
-
-    const post = data.find(p => p._id === postId);
-
-    if (!post) {
-      document.getElementById("post").innerHTML = "Post no encontrado";
-      return;
+  <script>
+    if (!localStorage.getItem("token") || !localStorage.getItem("userId")) {
+      window.location.href = "login.html";
     }
+  </script>
 
-    document.getElementById("post").innerHTML = `
-      <div class="card post">
-
-        <div class="post-header">👤 Usuario</div>
-
-        ${post.media ? `<img src="${post.media}" class="post-img">` : ""}
-
-        <div class="post-body">
-          <h3>${post.title}</h3>
-          <p>${post.description}</p>
+  <div class="page-shell fade-in">
+    <header class="navbar">
+      <div class="brand">
+        <div class="brand-mark">FT</div>
+        <div class="brand-copy">
+          <h1>Comentarios de la publicacion</h1>
+          <p>Revisa la conversacion y contacta al autor por privado si hace falta.</p>
         </div>
-
-        <div class="post-actions">
-          <span>❤️ ${post.likes || 0}</span>
-        </div>
-
       </div>
-    `;
 
-  } catch (err) {
-    console.log(err);
-  }
-}
+      <nav class="nav-links">
+        <span class="user-chip" id="userChip"></span>
+        <a class="nav-link" href="index.html">Inicio</a>
+        <a class="nav-link" href="messages.html">Mensajes</a>
+        <button class="button-secondary" type="button" onclick="logout()">Cerrar sesion</button>
+      </nav>
+    </header>
 
-// 💬 CARGAR COMENTARIOS
-async function loadComments(){
-  try {
-    const res = await fetch(`https://foro-trabajos.onrender.com/comments/${postId}`);
-    const data = await res.json();
+    <main class="layout-grid">
+      <section class="panel-stack">
+        <article class="card post-card" id="postCard">
+          <div class="post-copy">
+            <h2 class="section-subtitle">Cargando publicacion...</h2>
+          </div>
+        </article>
 
-    const container = document.getElementById("comments");
-    container.innerHTML = "";
+        <section class="container">
+          <div class="counter-row">
+            <h2 class="section-title">Comentarios</h2>
+            <a class="button-secondary" id="messageAuthorLink" href="messages.html">Mensaje al autor</a>
+          </div>
 
-    if (data.length === 0) {
-      container.innerHTML = "<p>Sin comentarios</p>";
-      return;
+          <div class="comment-list" id="comments"></div>
+
+          <div class="comment-input" style="margin-top:18px;">
+            <input id="commentInput" maxlength="300" placeholder="Agrega una respuesta o una duda">
+            <button type="button" onclick="addComment()">Enviar</button>
+          </div>
+        </section>
+      </section>
+
+      <aside class="panel sidebar-card">
+        <h2 class="section-subtitle">Tip</h2>
+        <div class="empty-state">
+          Si la conversacion ya paso a detalles privados, usa el boton de mensaje directo para seguir como en LinkedIn.
+        </div>
+      </aside>
+    </main>
+  </div>
+
+  <script>
+    const API_BASE = window.location.origin;
+    const token = localStorage.getItem("token");
+    const currentUserId = localStorage.getItem("userId");
+    const postId = new URLSearchParams(window.location.search).get("postId");
+
+    const postCard = document.getElementById("postCard");
+    const commentsContainer = document.getElementById("comments");
+    const userChip = document.getElementById("userChip");
+    const messageAuthorLink = document.getElementById("messageAuthorLink");
+
+    userChip.textContent = localStorage.getItem("username") || "Usuario";
+
+    function logout() {
+      localStorage.clear();
+      window.location.href = "login.html";
     }
 
-    data.forEach(c => {
-      container.innerHTML += `
-        <div class="comment">
-          <strong>${c.username}:</strong> ${c.content}
-        </div>
-      `;
-    });
+    function authHeaders(extra = {}) {
+      return {
+        ...extra,
+        Authorization: `Bearer ${token}`,
+      };
+    }
 
-  } catch (err) {
-    console.log(err);
-  }
-}
+    function escapeHtml(value) {
+      return String(value || "")
+        .replace(/&/g, "&amp;")
+        .replace(/</g, "&lt;")
+        .replace(/>/g, "&gt;")
+        .replace(/"/g, "&quot;")
+        .replace(/'/g, "&#39;");
+    }
 
-// 💬 AGREGAR COMENTARIO
-async function addComment(){
+    function formatDate(dateString) {
+      return new Date(dateString).toLocaleString("es-MX", {
+        dateStyle: "medium",
+        timeStyle: "short",
+      });
+    }
 
-  const input = document.getElementById("input");
-  const text = input.value;
+    function renderAvatar(user) {
+      if (user?.avatar) {
+        return `<img class="avatar" src="${user.avatar}" alt="Avatar de ${escapeHtml(user.username)}">`;
+      }
 
-  if (!text) {
-    alert("Escribe algo");
-    return;
-  }
+      const initials = String(user?.username || "U")
+        .split(" ")
+        .filter(Boolean)
+        .slice(0, 2)
+        .map((part) => part[0].toUpperCase())
+        .join("");
 
-  try {
-    await fetch("https://foro-trabajos.onrender.com/comment", {
-      method:"POST",
-      headers:{"Content-Type":"application/json"},
-      body: JSON.stringify({
-        postId: postId,
-        username: localStorage.getItem("username"),
-        content: text
-      })
-    });
+      return `<div class="avatar-placeholder avatar">${escapeHtml(initials)}</div>`;
+    }
 
-    input.value = "";
+    async function loadPost() {
+      try {
+        const response = await fetch(`${API_BASE}/posts`, {
+          headers: authHeaders(),
+        });
+
+        if (!response.ok) {
+          throw new Error("No se pudo cargar la publicacion");
+        }
+
+        const posts = await response.json();
+        const post = posts.find((item) => item._id === postId);
+
+        if (!post) {
+          postCard.innerHTML = '<div class="post-copy"><p class="empty-state">La publicacion no existe o fue eliminada.</p></div>';
+          return;
+        }
+
+        const authorId = post.author?._id || post.userId;
+        messageAuthorLink.href =
+          String(authorId) === String(currentUserId)
+            ? "messages.html"
+            : `messages.html?userId=${encodeURIComponent(authorId)}&postId=${encodeURIComponent(post._id)}`;
+
+        postCard.innerHTML = `
+          <div class="post-head">
+            <div class="author-meta">
+              ${renderAvatar(post.author)}
+              <div>
+                <h3>${escapeHtml(post.author?.username || "Usuario")}</h3>
+                <p class="timestamp">${escapeHtml(formatDate(post.createdAt))}</p>
+              </div>
+            </div>
+          </div>
+
+          ${post.media ? `<img class="post-image" src="${post.media}" alt="Imagen de ${escapeHtml(post.title)}">` : ""}
+
+          <div class="post-copy">
+            <h3>${escapeHtml(post.title)}</h3>
+            <p>${escapeHtml(post.description)}</p>
+          </div>
+        `;
+      } catch (error) {
+        postCard.innerHTML = `<div class="post-copy"><p class="empty-state">${escapeHtml(error.message)}</p></div>`;
+      }
+    }
+
+    async function loadComments() {
+      commentsContainer.innerHTML = '<div class="empty-state">Cargando comentarios...</div>';
+
+      try {
+        const response = await fetch(`${API_BASE}/comments/${postId}`, {
+          headers: authHeaders(),
+        });
+
+        if (!response.ok) {
+          throw new Error("No se pudieron cargar los comentarios");
+        }
+
+        const comments = await response.json();
+
+        if (!comments.length) {
+          commentsContainer.innerHTML = '<div class="empty-state">Todavia no hay comentarios en esta publicacion.</div>';
+          return;
+        }
+
+        commentsContainer.innerHTML = comments
+          .map(
+            (comment) => `
+              <article class="comment">
+                <strong>${escapeHtml(comment.username)}</strong>
+                <span>${escapeHtml(comment.content)}</span>
+              </article>
+            `
+          )
+          .join("");
+      } catch (error) {
+        commentsContainer.innerHTML = `<div class="empty-state">${escapeHtml(error.message)}</div>`;
+      }
+    }
+
+    async function addComment() {
+      const input = document.getElementById("commentInput");
+      const content = input.value.trim();
+
+      if (!content) {
+        input.focus();
+        return;
+      }
+
+      try {
+        const response = await fetch(`${API_BASE}/comment`, {
+          method: "POST",
+          headers: authHeaders({
+            "Content-Type": "application/json",
+          }),
+          body: JSON.stringify({ postId, content }),
+        });
+
+        if (!response.ok) {
+          throw new Error(await response.text());
+        }
+
+        input.value = "";
+        await loadComments();
+      } catch (error) {
+        alert(error.message || "No se pudo enviar el comentario");
+      }
+    }
+
+    loadPost();
     loadComments();
-
-  } catch (err) {
-    console.log(err);
-    alert("Error al comentar");
-  }
-}
-
-// 🚀 INIT
-loadPost();
-loadComments();
-
-</script>
-
+  </script>
 </body>
 </html>

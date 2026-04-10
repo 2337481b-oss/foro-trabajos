@@ -1,229 +1,371 @@
 <!DOCTYPE html>
-<html>
+<html lang="es">
 <head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>Foro de Trabajos</title>
   <link rel="stylesheet" href="css/styles.css">
 </head>
-
 <body>
+  <script>
+    if (!localStorage.getItem("token") || !localStorage.getItem("userId")) {
+      window.location.href = "login.html";
+    }
+  </script>
 
-<!-- 🔒 PROTECCIÓN -->
-<script>
-if (!localStorage.getItem("userId")) {
-  window.location.href = "login.html";
-}
-</script>
-
-<!-- 🧭 NAVBAR -->
-<div class="navbar">
-  <h3>💼 Foro</h3>
-  <div>
-    <span id="userName"></span>
-    <a href="post.html">Publicar</a>
-    <button onclick="logout()">Cerrar sesión</button>
-  </div>
-</div>
-
-<!-- 📄 CONTENIDO -->
-<div class="container fade-in">
-  <h2>Publicaciones</h2>
-  <div id="posts"></div>
-</div>
-
-<script>
-
-// 👤 USERNAME
-document.getElementById("userName").innerText =
-  "👤 " + (localStorage.getItem("username") || "Usuario");
-
-// 🚪 LOGOUT
-function logout(){
-  localStorage.clear();
-  window.location.href = "login.html";
-}
-
-// 📡 CARGAR POSTS
-async function loadPosts(){
-  try {
-    const res = await fetch("https://foro-trabajos.onrender.com/posts");
-    const data = await res.json();
-
-    const container = document.getElementById("posts");
-    container.innerHTML = "";
-
-    data.forEach(post => {
-
-      container.innerHTML += `
-        <div class="card post" id="post-${post._id}">
-
-          <div class="post-header">
-            <div class="user-info">
-              <div class="avatar"></div>
-              <span>👤 Usuario</span>
-            </div>
-          </div>
-
-          ${post.media ? `<img src="${post.media}" class="post-img">` : ""}
-
-          <div class="post-body">
-            <h3>${post.title}</h3>
-            <p>${post.description}</p>
-          </div>
-
-          <div class="post-actions">
-
-            <button onclick="likePost('${post._id}', this)">
-              ❤️ <span id="likes-${post._id}">${post.likes || 0}</span>
-            </button>
-
-            <button onclick="toggleComments('${post._id}')">
-              💬 <span id="count-${post._id}">...</span>
-            </button>
-
-            ${post.userId === localStorage.getItem("userId") ? `
-              <button onclick="deletePost('${post._id}')">🗑</button>
-            ` : ""}
-
-          </div>
-
-          <!-- 💬 COMENTARIOS -->
-          <div class="comments" id="comments-${post._id}">
-
-            <div id="list-${post._id}" class="loading">
-              ⏳ Cargando...
-            </div>
-
-            <div class="comment-input">
-              <input id="input-${post._id}" placeholder="Escribe un comentario...">
-              <button onclick="addComment('${post._id}')">Enviar</button>
-            </div>
-
-          </div>
-
+  <div class="page-shell fade-in">
+    <header class="navbar">
+      <div class="brand">
+        <div class="brand-mark">FT</div>
+        <div class="brand-copy">
+          <h1>Foro de Trabajos</h1>
+          <p>Comparte ideas, recibe comentarios y conecta en privado.</p>
         </div>
-      `;
+      </div>
 
-      loadCommentCount(post._id);
-    });
+      <nav class="nav-links">
+        <span class="user-chip" id="userChip">Tu perfil</span>
+        <a class="nav-link active" href="index.html">Inicio</a>
+        <a class="nav-link" href="post.html">Publicar</a>
+        <a class="nav-link" href="messages.html">Mensajes</a>
+        <button class="button-secondary" type="button" onclick="logout()">Cerrar sesion</button>
+      </nav>
+    </header>
 
-  } catch (err) {
-    console.log(err);
-  }
-}
+    <main class="layout-grid">
+      <section class="panel-stack">
+        <section class="container hero-panel">
+          <h2 class="section-title">Publicaciones con contacto directo</h2>
+          <p class="section-subtitle">
+            Ahora cada publicacion puede abrir una conversacion privada con su autor, como en LinkedIn.
+          </p>
 
-// ❤️ LIKE PRO (ANTI SPAM)
-function likePost(id, btn){
+          <div class="hero-stats">
+            <div class="stat-pill">
+              <strong id="postCount">0</strong>
+              <span class="helper-text">publicaciones visibles</span>
+            </div>
+            <div class="stat-pill">
+              <strong id="messageHint">Inbox</strong>
+              <span class="helper-text">abre conversaciones desde cualquier post</span>
+            </div>
+          </div>
+        </section>
 
-  fetch(`https://foro-trabajos.onrender.com/like/${id}`, {
-    method:"POST",
-    headers:{"Content-Type":"application/json"},
-    body: JSON.stringify({
-      userId: localStorage.getItem("userId")
-    })
-  })
-  .then(res => res.text())
-  .then(msg => {
+        <section class="post-list" id="posts"></section>
+      </section>
 
-    if (msg === "Ya diste like") return;
+      <aside class="panel-stack">
+        <section class="panel sidebar-card">
+          <h2 class="section-subtitle">Como mejoro tu feed</h2>
+          <ul class="list-clean">
+            <li class="empty-state">Autenticacion con token en acciones sensibles.</li>
+            <li class="empty-state">Autor real, avatar y fecha visible en cada publicacion.</li>
+            <li class="empty-state">Boton directo a mensajes privados desde cada publicacion.</li>
+          </ul>
+        </section>
 
-    const el = document.getElementById("likes-" + id);
-    el.innerText = parseInt(el.innerText) + 1;
+        <section class="panel sidebar-card">
+          <div class="counter-row">
+            <h2 class="section-subtitle">Atajos</h2>
+            <a class="toggle-link" href="messages.html">Abrir inbox</a>
+          </div>
+          <ul class="list-clean">
+            <li><a class="button button-block" href="post.html">Crear nueva publicacion</a></li>
+            <li><a class="button-secondary button-block" href="messages.html">Ver conversaciones</a></li>
+          </ul>
+        </section>
+      </aside>
+    </main>
+  </div>
 
-    btn.classList.add("liked");
-    setTimeout(() => btn.classList.remove("liked"), 300);
-  });
-}
+  <script>
+    const API_BASE = window.location.origin;
+    const token = localStorage.getItem("token");
+    const currentUserId = localStorage.getItem("userId");
+    const currentUsername = localStorage.getItem("username") || "Usuario";
 
-// 🗑 ELIMINAR POST
-function deletePost(id){
+    const postsContainer = document.getElementById("posts");
+    const postCount = document.getElementById("postCount");
+    const userChip = document.getElementById("userChip");
 
-  if (!confirm("¿Eliminar publicación?")) return;
+    userChip.textContent = currentUsername;
 
-  fetch(`https://foro-trabajos.onrender.com/post/${id}`, {
-    method:"DELETE",
-    headers: { "Content-Type": "application/json" },
-    body: JSON.stringify({
-      userId: localStorage.getItem("userId")
-    })
-  })
-  .then(res => res.text())
-  .then(msg => {
-    alert(msg);
-    document.getElementById("post-" + id).remove();
-  });
-}
-
-// 💬 TOGGLE COMENTARIOS (UX PRO)
-function toggleComments(postId){
-  const box = document.getElementById("comments-" + postId);
-
-  box.classList.toggle("active");
-
-  if (box.classList.contains("active")) {
-    loadComments(postId);
-  }
-}
-
-// 💬 CARGAR COMENTARIOS
-function loadComments(postId){
-  fetch(`https://foro-trabajos.onrender.com/comments/${postId}`)
-  .then(res => res.json())
-  .then(data => {
-    const list = document.getElementById("list-" + postId);
-    list.innerHTML = "";
-
-    if (!data.length) {
-      list.innerHTML = `<p style="opacity:0.6;">Sin comentarios</p>`;
-      return;
+    function logout() {
+      localStorage.clear();
+      window.location.href = "login.html";
     }
 
-    data.forEach(c => {
-      list.innerHTML += `
-        <div class="comment">
-          <strong>${c.username}:</strong> ${c.content}
-        </div>
+    function authHeaders(extra = {}) {
+      return {
+        ...extra,
+        Authorization: `Bearer ${token}`,
+      };
+    }
+
+    function escapeHtml(value) {
+      return String(value || "")
+        .replace(/&/g, "&amp;")
+        .replace(/</g, "&lt;")
+        .replace(/>/g, "&gt;")
+        .replace(/"/g, "&quot;")
+        .replace(/'/g, "&#39;");
+    }
+
+    function getInitials(name) {
+      return String(name || "U")
+        .split(" ")
+        .filter(Boolean)
+        .slice(0, 2)
+        .map((part) => part[0].toUpperCase())
+        .join("");
+    }
+
+    function formatDate(dateString) {
+      if (!dateString) return "Ahora";
+
+      return new Date(dateString).toLocaleString("es-MX", {
+        dateStyle: "medium",
+        timeStyle: "short",
+      });
+    }
+
+    function renderAvatar(user, sizeClass = "avatar") {
+      if (user && user.avatar) {
+        return `<img class="${sizeClass}" src="${user.avatar}" alt="Avatar de ${escapeHtml(user.username)}">`;
+      }
+
+      return `<div class="avatar-placeholder ${sizeClass === "avatar-lg" ? "avatar-lg" : "avatar"}">${escapeHtml(
+        getInitials(user?.username)
+      )}</div>`;
+    }
+
+    async function loadPosts() {
+      postsContainer.innerHTML = '<section class="panel empty-state">Cargando publicaciones...</section>';
+
+      try {
+        const response = await fetch(`${API_BASE}/posts`, {
+          headers: authHeaders(),
+        });
+
+        if (!response.ok) {
+          throw new Error("No fue posible cargar las publicaciones");
+        }
+
+        const posts = await response.json();
+        postCount.textContent = posts.length;
+
+        if (!posts.length) {
+          postsContainer.innerHTML = `
+            <section class="panel empty-state">
+              Aun no hay publicaciones. La primera puede ser tuya.
+            </section>
+          `;
+          return;
+        }
+
+        postsContainer.innerHTML = posts.map((post) => renderPost(post)).join("");
+      } catch (error) {
+        postsContainer.innerHTML = `
+          <section class="panel empty-state">
+            ${escapeHtml(error.message || "Error al cargar publicaciones")}
+          </section>
+        `;
+      }
+    }
+
+    function renderPost(post) {
+      const isOwnPost = String(post.userId) === String(currentUserId);
+      const author = post.author || { username: "Usuario", avatar: "" };
+
+      return `
+        <article class="card post-card" id="post-${post._id}">
+          <div class="post-head">
+            <div class="author-meta">
+              ${renderAvatar(author)}
+              <div>
+                <h3>${escapeHtml(author.username)}</h3>
+                <p class="timestamp">${escapeHtml(formatDate(post.createdAt))}</p>
+              </div>
+            </div>
+            ${isOwnPost ? '<span class="helper-text">Tu publicacion</span>' : '<span class="helper-text">Disponible para contacto</span>'}
+          </div>
+
+          ${post.media ? `<img class="post-image" src="${post.media}" alt="Imagen de ${escapeHtml(post.title)}">` : ""}
+
+          <div class="post-copy">
+            <h3>${escapeHtml(post.title)}</h3>
+            <p>${escapeHtml(post.description)}</p>
+          </div>
+
+          <div class="post-foot">
+            <div class="post-actions">
+              <button
+                class="action-button ${post.likedByCurrentUser ? "liked" : ""}"
+                type="button"
+                id="like-btn-${post._id}"
+                onclick="likePost('${post._id}')"
+              >
+                Me gusta <span id="likes-${post._id}">${post.likes || 0}</span>
+              </button>
+
+              <button class="action-button" type="button" onclick="toggleComments('${post._id}')">
+                Comentarios <span id="count-${post._id}">${post.commentCount || 0}</span>
+              </button>
+
+              ${
+                isOwnPost
+                  ? `<button class="action-button button-danger" type="button" onclick="deletePost('${post._id}')">Eliminar</button>`
+                  : `<a class="action-button button-ghost" href="messages.html?userId=${encodeURIComponent(
+                      post.author?._id || post.userId
+                    )}&postId=${encodeURIComponent(post._id)}">Mensaje directo</a>`
+              }
+            </div>
+
+            <div class="comments" id="comments-${post._id}">
+              <div class="comment-list" id="list-${post._id}">
+                <div class="empty-state">Carga tus comentarios aqui.</div>
+              </div>
+
+              <div class="comment-input">
+                <input id="input-${post._id}" maxlength="300" placeholder="Escribe un comentario profesional o una duda">
+                <button type="button" onclick="addComment('${post._id}')">Enviar</button>
+              </div>
+            </div>
+          </div>
+        </article>
       `;
-    });
-  });
-}
+    }
 
-// 💬 AGREGAR COMENTARIO
-function addComment(postId){
-  const input = document.getElementById("input-" + postId);
-  const text = input.value;
+    async function likePost(postId) {
+      const button = document.getElementById(`like-btn-${postId}`);
 
-  if (!text.trim()) return;
+      if (button.classList.contains("liked")) {
+        return;
+      }
 
-  fetch("https://foro-trabajos.onrender.com/comment", {
-    method:"POST",
-    headers:{"Content-Type":"application/json"},
-    body: JSON.stringify({
-      postId,
-      username: localStorage.getItem("username"),
-      content: text
-    })
-  })
-  .then(() => {
-    input.value = "";
-    loadComments(postId);
-    loadCommentCount(postId);
-  });
-}
+      try {
+        const response = await fetch(`${API_BASE}/like/${postId}`, {
+          method: "POST",
+          headers: authHeaders({
+            "Content-Type": "application/json",
+          }),
+        });
 
-// 🔢 CONTAR COMENTARIOS (OPTIMIZADO)
-function loadCommentCount(postId){
-  fetch(`https://foro-trabajos.onrender.com/comments-count/${postId}`)
-  .then(res => res.json())
-  .then(data => {
-    const el = document.getElementById("count-" + postId);
-    el.innerText = data.count;
-  });
-}
+        if (!response.ok) {
+          throw new Error(await response.text());
+        }
 
-// 🚀 INIT
-loadPosts();
+        const data = await response.json();
+        document.getElementById(`likes-${postId}`).textContent = data.likes;
 
-</script>
+        if (!data.alreadyLiked) {
+          button.classList.add("liked");
+        }
+      } catch (error) {
+        alert(error.message || "No se pudo registrar el like");
+      }
+    }
 
+    async function deletePost(postId) {
+      const confirmed = confirm("Se eliminara la publicacion y sus comentarios. Deseas continuar?");
+      if (!confirmed) {
+        return;
+      }
+
+      try {
+        const response = await fetch(`${API_BASE}/post/${postId}`, {
+          method: "DELETE",
+          headers: authHeaders(),
+        });
+
+        if (!response.ok) {
+          throw new Error(await response.text());
+        }
+
+        document.getElementById(`post-${postId}`)?.remove();
+        postCount.textContent = Math.max(0, Number(postCount.textContent) - 1);
+      } catch (error) {
+        alert(error.message || "No se pudo eliminar la publicacion");
+      }
+    }
+
+    async function toggleComments(postId) {
+      const wrapper = document.getElementById(`comments-${postId}`);
+      wrapper.classList.toggle("active");
+
+      if (wrapper.classList.contains("active")) {
+        await loadComments(postId);
+      }
+    }
+
+    async function loadComments(postId) {
+      const list = document.getElementById(`list-${postId}`);
+      list.innerHTML = '<div class="empty-state">Cargando comentarios...</div>';
+
+      try {
+        const response = await fetch(`${API_BASE}/comments/${postId}`, {
+          headers: authHeaders(),
+        });
+
+        if (!response.ok) {
+          throw new Error("No fue posible cargar comentarios");
+        }
+
+        const comments = await response.json();
+
+        if (!comments.length) {
+          list.innerHTML = '<div class="empty-state">Todavia no hay comentarios en esta publicacion.</div>';
+          return;
+        }
+
+        list.innerHTML = comments
+          .map(
+            (comment) => `
+              <article class="comment">
+                <strong>${escapeHtml(comment.username)}</strong>
+                <span>${escapeHtml(comment.content)}</span>
+              </article>
+            `
+          )
+          .join("");
+      } catch (error) {
+        list.innerHTML = `<div class="empty-state">${escapeHtml(error.message)}</div>`;
+      }
+    }
+
+    async function addComment(postId) {
+      const input = document.getElementById(`input-${postId}`);
+      const content = input.value.trim();
+
+      if (!content) {
+        input.focus();
+        return;
+      }
+
+      try {
+        const response = await fetch(`${API_BASE}/comment`, {
+          method: "POST",
+          headers: authHeaders({
+            "Content-Type": "application/json",
+          }),
+          body: JSON.stringify({ postId, content }),
+        });
+
+        if (!response.ok) {
+          throw new Error(await response.text());
+        }
+
+        input.value = "";
+        const counter = document.getElementById(`count-${postId}`);
+        counter.textContent = Number(counter.textContent) + 1;
+        await loadComments(postId);
+      } catch (error) {
+        alert(error.message || "No se pudo enviar el comentario");
+      }
+    }
+
+    loadPosts();
+  </script>
 </body>
 </html>

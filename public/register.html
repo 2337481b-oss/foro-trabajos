@@ -1,140 +1,123 @@
 <!DOCTYPE html>
-<html>
+<html lang="es">
 <head>
-  <title>Registro</title>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Crear cuenta</title>
   <link rel="stylesheet" href="css/styles.css">
 </head>
-
 <body>
+  <script>
+    if (localStorage.getItem("token") && localStorage.getItem("userId")) {
+      window.location.href = "index.html";
+    }
+  </script>
 
-<script>
-if (localStorage.getItem("userId")) {
-  window.location.href = "index.html";
-}
-</script>
+  <main class="page-shell fade-in">
+    <section class="card form-card">
+      <div class="brand">
+        <div class="brand-mark">FT</div>
+        <div class="brand-copy">
+          <h2>Crea tu cuenta</h2>
+          <p>Publica mejor, comenta con tu perfil real y recibe mensajes directos.</p>
+        </div>
+      </div>
 
-<div class="container fade-in">
-  <h2>Crear cuenta</h2>
+      <div class="form-grid">
+        <div class="field-group">
+          <label class="field-label" for="username">Usuario</label>
+          <input id="username" maxlength="30" placeholder="Tu nombre o alias profesional">
+        </div>
 
-  <input id="username" placeholder="Usuario">
-  <input id="email" placeholder="Email">
-  <input id="password" type="password" placeholder="Contraseña">
-  <input id="confirmPassword" type="password" placeholder="Confirmar contraseña">
+        <div class="field-group">
+          <label class="field-label" for="email">Email</label>
+          <input id="email" type="email" autocomplete="email" placeholder="tucorreo@ejemplo.com">
+        </div>
 
-  <!-- 👁️ Mostrar contraseña -->
-  <label style="font-size:14px;">
-    <input type="checkbox" onclick="togglePassword()"> Mostrar contraseña
-  </label>
+        <div class="field-group">
+          <label class="field-label" for="password">Contrasena</label>
+          <input id="password" type="password" autocomplete="new-password" placeholder="Minimo 6 caracteres, 1 mayuscula y 1 numero">
+        </div>
 
-  <button id="registerBtn" onclick="register()">Registrarse</button>
+        <div class="field-group">
+          <label class="field-label" for="confirmPassword">Confirmar contrasena</label>
+          <input id="confirmPassword" type="password" autocomplete="new-password" placeholder="Repite tu contrasena">
+        </div>
 
-  <p id="error" style="color:#ef4444; text-align:center;"></p>
+        <button class="button-block" id="registerBtn" type="button" onclick="register()">Crear cuenta</button>
+        <p class="status-message" id="status" aria-live="polite"></p>
 
-  <p style="text-align:center;">
-    ¿Ya tienes cuenta? <a href="login.html">Inicia sesión</a>
-  </p>
-</div>
+        <p class="helper-text">
+          Ya tienes cuenta?
+          <a class="toggle-link" href="login.html">Inicia sesion</a>
+        </p>
+      </div>
+    </section>
+  </main>
 
-<script>
+  <script>
+    const API_BASE = window.location.origin;
+    const registerBtn = document.getElementById("registerBtn");
+    const status = document.getElementById("status");
 
-// 👁️ MOSTRAR CONTRASEÑA
-function togglePassword(){
-  const pass = document.getElementById("password");
-  const confirm = document.getElementById("confirmPassword");
+    function showStatus(message, variant) {
+      status.textContent = message;
+      status.className = `status-message ${variant}`;
+    }
 
-  const type = pass.type === "password" ? "text" : "password";
-  pass.type = type;
-  confirm.type = type;
-}
+    async function register() {
+      const username = document.getElementById("username").value.trim();
+      const email = document.getElementById("email").value.trim();
+      const password = document.getElementById("password").value.trim();
+      const confirmPassword = document.getElementById("confirmPassword").value.trim();
 
-// 🚀 REGISTER
-function register(){
+      if (!username || !email || !password || !confirmPassword) {
+        showStatus("Completa todos los campos.", "status-error");
+        return;
+      }
 
-  const username = document.getElementById("username").value.trim();
-  const email = document.getElementById("email").value.trim();
-  const password = document.getElementById("password").value;
-  const confirm = document.getElementById("confirmPassword").value;
+      if (password !== confirmPassword) {
+        showStatus("Las contrasenas no coinciden.", "status-error");
+        return;
+      }
 
-  const error = document.getElementById("error");
-  const btn = document.getElementById("registerBtn");
+      if (registerBtn.disabled) {
+        return;
+      }
 
-  error.innerText = "";
+      registerBtn.disabled = true;
+      registerBtn.textContent = "Creando cuenta...";
+      showStatus("Registrando usuario...", "status-info");
 
-  // 🔒 VALIDACIONES PRO
-  if (!username || !email || !password || !confirm) {
-    error.innerText = "Completa todos los campos";
-    return;
-  }
+      try {
+        const response = await fetch(`${API_BASE}/register`, {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json",
+          },
+          body: JSON.stringify({ username, email, password }),
+        });
 
-  // username mínimo
-  if (username.length < 3) {
-    error.innerText = "El usuario debe tener al menos 3 caracteres";
-    return;
-  }
+        if (!response.ok) {
+          throw new Error(await response.text());
+        }
 
-  // email válido
-  const emailRegex = /\S+@\S+\.\S+/;
-  if (!emailRegex.test(email)) {
-    error.innerText = "Email inválido";
-    return;
-  }
+        const data = await response.json();
+        localStorage.setItem("token", data.token);
+        localStorage.setItem("userId", data.user._id);
+        localStorage.setItem("username", data.user.username);
 
-  // contraseña fuerte
-  if (password.length < 6) {
-    error.innerText = "La contraseña debe tener mínimo 6 caracteres";
-    return;
-  }
+        showStatus("Cuenta creada. Entrando al feed...", "status-success");
 
-  if (!/[A-Z]/.test(password) || !/[0-9]/.test(password)) {
-    error.innerText = "La contraseña debe tener al menos 1 número y 1 mayúscula";
-    return;
-  }
-
-  // confirmar contraseña
-  if (password !== confirm) {
-    error.innerText = "Las contraseñas no coinciden";
-    return;
-  }
-
-  // 🚫 evitar doble click
-  if (btn.disabled) return;
-
-  // 🔄 UI
-  btn.disabled = true;
-  btn.innerText = "Registrando...";
-
-  fetch("https://foro-trabajos.onrender.com/register", {
-    method:"POST",
-    headers:{"Content-Type":"application/json"},
-    body: JSON.stringify({ username, email, password })
-  })
-  .then(async res => {
-    const text = await res.text();
-    if (!res.ok) throw new Error(text);
-    return text;
-  })
-  .then(data => {
-
-    // 🔥 AUTO LOGIN (nivel pro real)
-    localStorage.setItem("username", username);
-
-    error.style.color = "#22c55e";
-    error.innerText = "Cuenta creada correctamente";
-
-    setTimeout(() => {
-      window.location.href = "login.html";
-    }, 1000);
-  })
-  .catch(err => {
-    error.style.color = "#ef4444";
-    error.innerText = err.message || "Error al registrar";
-
-    btn.disabled = false;
-    btn.innerText = "Registrarse";
-  });
-}
-
-</script>
-
+        setTimeout(() => {
+          window.location.href = "index.html";
+        }, 700);
+      } catch (error) {
+        showStatus(error.message || "No se pudo crear la cuenta.", "status-error");
+        registerBtn.disabled = false;
+        registerBtn.textContent = "Crear cuenta";
+      }
+    }
+  </script>
 </body>
 </html>
