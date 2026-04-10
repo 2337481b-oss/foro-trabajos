@@ -7,36 +7,78 @@
 
 <body>
 
+<!-- 🔒 PROTECCIÓN -->
+<script>
+if (!localStorage.getItem("userId")) {
+  window.location.href = "login.html";
+}
+</script>
+
+<!-- 🧭 NAVBAR -->
 <div class="navbar">
   <h3>💼 Foro</h3>
+
   <div>
-    <a href="login.html">Login</a>
-    <a href="register.html">Registro</a>
+    <a href="index.html">Inicio</a>
     <a href="post.html">Publicar</a>
+    <button onclick="logout()">Cerrar sesión</button>
   </div>
 </div>
 
+<!-- 📄 CONTENIDO -->
 <div class="container fade-in">
   <h2>Publicaciones</h2>
   <div id="posts"></div>
 </div>
 
 <script>
+
+// 🚪 LOGOUT
+function logout(){
+  localStorage.clear();
+  window.location.href = "login.html";
+}
+
+// 📡 CARGAR POSTS
 fetch("https://foro-trabajos.onrender.com/posts")
 .then(res => res.json())
 .then(data => {
   const container = document.getElementById("posts");
 
-  data.forEach(post => {
+  container.innerHTML = ""; // limpiar antes
+
+  data.reverse().forEach(post => {
     container.innerHTML += `
-      <div class="card">
-        <h3>${post.title}</h3>
-        <p>${post.description}</p>
-        <img src="${post.media}" width="100%">
+      <div class="card post">
+
+        <div class="post-header">
+          <strong>👤 Usuario</strong>
+        </div>
+
+        ${post.media ? `<img src="${post.media}" class="post-img">` : ""}
+
+        <div class="post-body">
+          <h3>${post.title}</h3>
+          <p>${post.description}</p>
+        </div>
+
+        <div class="post-actions">
+          <button onclick="likePost('${post._id}')">❤️ ${post.likes || 0}</button>
+        </div>
+
       </div>
     `;
   });
 });
+
+// ❤️ LIKE
+function likePost(id){
+  fetch(`https://foro-trabajos.onrender.com/like/${id}`, {
+    method:"POST"
+  })
+  .then(() => location.reload());
+}
+
 </script>
 
 </body>

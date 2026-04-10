@@ -7,6 +7,12 @@
 
 <body>
 
+  <script>
+if (localStorage.getItem("userId")) {
+  window.location.href = "index.html";
+}
+</script>
+
 <div class="container fade-in">
   <h2>Crear cuenta</h2>
 
@@ -19,18 +25,34 @@
 
 <script>
 function register(){
+
+  const userInput = document.getElementById("username");
+  const emailInput = document.getElementById("email");
+  const passInput = document.getElementById("password");
+
+  // 🔒 VALIDACIÓN
+  if (!userInput.value || !emailInput.value || !passInput.value) {
+    alert("Completa todos los campos");
+    return;
+  }
+
   fetch("https://foro-trabajos.onrender.com/register", {
     method:"POST",
     headers:{"Content-Type":"application/json"},
     body: JSON.stringify({
-      username: username.value,
-      email: email.value,
-      password: password.value
+      username: userInput.value,
+      email: emailInput.value,
+      password: passInput.value
     })
   })
-  .then(() => {
-    alert("Usuario creado");
+  .then(res => res.text())
+  .then(data => {
+    alert(data);
     window.location.href = "login.html";
+  })
+  .catch(err => {
+    console.log(err);
+    alert("Error al registrar");
   });
 }
 </script>

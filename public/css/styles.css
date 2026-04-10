@@ -11,12 +11,24 @@ body {
   padding: 15px;
   display: flex;
   justify-content: space-between;
+  align-items: center;
 }
 
 .navbar a {
   color: #38bdf8;
   text-decoration: none;
   margin: 0 10px;
+}
+
+.navbar button {
+  width: auto;
+  padding: 5px 10px;
+  background: #ef4444;
+  color: white;
+}
+
+.navbar button:hover {
+  background: #dc2626;
 }
 
 /* CONTENEDOR */
@@ -32,11 +44,46 @@ body {
   padding: 15px;
   border-radius: 10px;
   margin-bottom: 15px;
-  transition: transform 0.3s;
+  transition: transform 0.3s, box-shadow 0.3s;
 }
 
 .card:hover {
   transform: scale(1.02);
+  box-shadow: 0 0 15px rgba(0,0,0,0.5);
+}
+
+/* POSTS ESTILO RED SOCIAL */
+.post {
+  padding: 0;
+  overflow: hidden;
+}
+
+.post-header {
+  padding: 10px;
+  background: #020617;
+  font-size: 14px;
+}
+
+.post-img {
+  width: 100%;
+  height: 300px;
+  object-fit: cover;
+}
+
+.post-body {
+  padding: 10px;
+}
+
+.post-actions {
+  display: flex;
+  justify-content: space-around;
+  padding: 10px;
+}
+
+.post-actions button {
+  background: none;
+  color: #38bdf8;
+  font-size: 18px;
 }
 
 /* INPUTS */
@@ -53,6 +100,10 @@ input {
   color: white;
 }
 
+input:focus {
+  outline: 2px solid #38bdf8;
+}
+
 button {
   background: #38bdf8;
   color: black;
@@ -64,6 +115,14 @@ button:hover {
   background: #0ea5e9;
 }
 
+/* PREVIEW */
+#preview {
+  border-radius: 10px;
+  max-height: 300px;
+  object-fit: cover;
+  box-shadow: 0 0 10px rgba(0,0,0,0.5);
+}
+
 /* ANIMACIÓN */
 .fade-in {
   animation: fade 0.5s ease-in;
@@ -72,9 +131,4 @@ button:hover {
 @keyframes fade {
   from {opacity: 0;}
   to {opacity: 1;}
-}
-#preview {
-  border-radius: 10px;
-  max-height: 300px;
-  object-fit: cover;
 }
