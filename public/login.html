@@ -54,7 +54,10 @@
   </main>
 
   <script>
-    const API_BASE = window.location.origin;
+    const API_BASE =
+      window.location.protocol === "file:"
+        ? "https://foro-trabajos.onrender.com"
+        : window.location.origin;
     const passwordInput = document.getElementById("password");
     const loginBtn = document.getElementById("loginBtn");
     const status = document.getElementById("status");
