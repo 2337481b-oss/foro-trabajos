@@ -19,6 +19,7 @@ if (!localStorage.getItem("userId")) {
   <h3>💼 Foro</h3>
 
   <div>
+    <span id="userName"></span>
     <a href="index.html">Inicio</a>
     <a href="post.html">Publicar</a>
     <button onclick="logout()">Cerrar sesión</button>
@@ -33,6 +34,10 @@ if (!localStorage.getItem("userId")) {
 
 <script>
 
+// 👤 MOSTRAR USUARIO
+document.getElementById("userName").innerText = 
+  "👤 " + (localStorage.getItem("username") || "Usuario");
+
 // 🚪 LOGOUT
 function logout(){
   localStorage.clear();
@@ -44,11 +49,11 @@ fetch("https://foro-trabajos.onrender.com/posts")
 .then(res => res.json())
 .then(data => {
   const container = document.getElementById("posts");
-
-  container.innerHTML = ""; // limpiar antes
+  container.innerHTML = "";
 
   data.reverse().forEach(post => {
-    container.innerHTML += `
+
+    const postHTML = `
       <div class="card post">
 
         <div class="post-header">
@@ -63,20 +68,30 @@ fetch("https://foro-trabajos.onrender.com/posts")
         </div>
 
         <div class="post-actions">
-          <button onclick="likePost('${post._id}')">❤️ ${post.likes || 0}</button>
+          <button onclick="likePost('${post._id}')">
+            ❤️ <span id="likes-${post._id}">${post.likes || 0}</span>
+          </button>
         </div>
 
       </div>
     `;
+
+    container.innerHTML += postHTML;
   });
 });
 
-// ❤️ LIKE
+// ❤️ LIKE SIN RECARGAR
 function likePost(id){
   fetch(`https://foro-trabajos.onrender.com/like/${id}`, {
     method:"POST"
   })
-  .then(() => location.reload());
+  .then(() => {
+    const likeSpan = document.getElementById("likes-" + id);
+    likeSpan.innerText = parseInt(likeSpan.innerText) + 1;
+  })
+  .catch(() => {
+    alert("Error al dar like");
+  });
 }
 
 </script>

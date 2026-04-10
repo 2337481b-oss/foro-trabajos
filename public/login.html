@@ -8,50 +8,94 @@
 <body>
 
 <div class="container fade-in">
-  <h2>Iniciar Sesión</h2>
+
+  <h2 id="formTitle">Iniciar Sesión</h2>
+
+  <!-- SOLO PARA REGISTRO -->
+  <input id="username" placeholder="Usuario" style="display:none;">
 
   <input id="email" placeholder="Email">
   <input id="password" type="password" placeholder="Password">
 
-  <button onclick="login()">Entrar</button>
+  <button onclick="handleAction()">Entrar</button>
+
+  <p id="toggleText" onclick="toggleForm()" style="cursor:pointer; color:#38bdf8;">
+    ¿No tienes cuenta? Regístrate
+  </p>
+
 </div>
 
 <script>
-function login(){
 
-  const emailInput = document.getElementById("email");
-  const passwordInput = document.getElementById("password");
+let isLogin = true;
 
-  if (!emailInput.value || !passwordInput.value) {
+// 🔁 CAMBIAR ENTRE LOGIN Y REGISTER
+function toggleForm(){
+  isLogin = !isLogin;
+
+  document.getElementById("formTitle").innerText =
+    isLogin ? "Iniciar Sesión" : "Crear cuenta";
+
+  document.getElementById("username").style.display =
+    isLogin ? "none" : "block";
+
+  document.querySelector("button").innerText =
+    isLogin ? "Entrar" : "Registrarse";
+
+  document.getElementById("toggleText").innerText =
+    isLogin
+    ? "¿No tienes cuenta? Regístrate"
+    : "¿Ya tienes cuenta? Inicia sesión";
+}
+
+// 🚀 LOGIN O REGISTER
+function handleAction(){
+
+  const email = document.getElementById("email").value;
+  const password = document.getElementById("password").value;
+  const username = document.getElementById("username").value;
+
+  if (!email || !password || (!isLogin && !username)) {
     alert("Completa todos los campos");
     return;
   }
 
-  fetch("https://foro-trabajos.onrender.com/login", {
-    method:"POST",
-    headers:{"Content-Type":"application/json"},
-    body: JSON.stringify({
-      email: emailInput.value,
-      password: passwordInput.value
+  if (isLogin) {
+    // 🔑 LOGIN
+    fetch("https://foro-trabajos.onrender.com/login", {
+      method:"POST",
+      headers:{"Content-Type":"application/json"},
+      body: JSON.stringify({ email, password })
     })
-  })
-  .then(res => res.json())
-  .then(data => {
+    .then(res => res.json())
+    .then(data => {
 
-    if (!data.user) {
+      if (!data.user) {
+        alert(data);
+        return;
+      }
+
+      localStorage.setItem("userId", data.user._id);
+      localStorage.setItem("username", data.user.username);
+
+      window.location.href = "index.html";
+    });
+
+  } else {
+    // 🔐 REGISTER
+    fetch("https://foro-trabajos.onrender.com/register", {
+      method:"POST",
+      headers:{"Content-Type":"application/json"},
+      body: JSON.stringify({ username, email, password })
+    })
+    .then(res => res.text())
+    .then(data => {
       alert(data);
-      return;
-    }
-
-    localStorage.setItem("userId", data.user._id);
-    localStorage.setItem("username", data.user.username);
-    window.location.href = "index.html";
-  })
-  .catch(err => {
-    console.log(err);
-    alert("Error en el login");
-  });
+      toggleForm(); // volver a login
+    });
+  }
 }
+
 </script>
 
 </body>

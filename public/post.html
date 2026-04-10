@@ -41,14 +41,19 @@ if (!localStorage.getItem("userId")) {
   <!-- BOTÓN PARA QUITAR -->
   <button id="removeBtn" onclick="removeImage()" style="display:none;">Quitar imagen</button>
 
-  <button onclick="upload()">Publicar</button>
+  <!-- BOTÓN PUBLICAR -->
+  <button id="publishBtn" onclick="upload()">Publicar</button>
+
+  <!-- MENSAJE -->
+  <p id="status" style="text-align:center;"></p>
 </div>
 
 <script>
 
+// 👤 NOMBRE USUARIO
 document.getElementById("userName").innerText = 
   "👤 " + (localStorage.getItem("username") || "Usuario");
-  
+
 // 🚪 LOGOUT
 function logout(){
   localStorage.clear();
@@ -106,11 +111,18 @@ function upload(){
   const titleInput = document.getElementById("title");
   const descInput = document.getElementById("description");
   const mediaInput = document.getElementById("media");
+  const status = document.getElementById("status");
+  const btn = document.getElementById("publishBtn");
 
   if (!titleInput.value || !descInput.value) {
     alert("Completa todos los campos");
     return;
   }
+
+  // 🔄 UI DE CARGA
+  btn.disabled = true;
+  btn.innerText = "Publicando...";
+  status.innerText = "Subiendo publicación...";
 
   const formData = new FormData();
 
@@ -128,12 +140,16 @@ function upload(){
   })
   .then(res => res.text())
   .then(data => {
-    alert(data);
-    window.location.href = "index.html";
+    status.innerText = "✅ Publicado correctamente";
+    setTimeout(() => {
+      window.location.href = "index.html";
+    }, 1000);
   })
   .catch(err => {
     console.log(err);
-    alert("Error al subir");
+    status.innerText = "❌ Error al subir";
+    btn.disabled = false;
+    btn.innerText = "Publicar";
   });
 }
 
