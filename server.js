@@ -572,6 +572,10 @@ app.get("/messages/:userId", auth, async (req, res) => {
     const currentUserId = String(req.user._id);
     const partnerId = String(req.params.userId);
 
+    if (!mongoose.Types.ObjectId.isValid(partnerId)) {
+      return res.status(400).send("Usuario no valido");
+    }
+
     const [partner, messages] = await Promise.all([
       User.findById(partnerId).select("-password").lean(),
       Message.find({

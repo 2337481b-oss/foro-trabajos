@@ -286,6 +286,10 @@
       messageList.innerHTML = '<div class="empty-state">Cargando mensajes...</div>';
 
       try {
+        if (selectedUserId === currentUserId) {
+          throw new Error("No puedes abrir una conversacion contigo mismo");
+        }
+
         const response = await fetch(`${API_BASE}/messages/${selectedUserId}`, {
           headers: authHeaders(),
         });
@@ -335,7 +339,21 @@
 
         messageList.scrollTop = messageList.scrollHeight;
       } catch (error) {
-        messageList.innerHTML = `<div class="empty-state">${escapeHtml(error.message || "No se pudo cargar la conversacion")}</div>`;
+        threadHeader.innerHTML = `
+          <div>
+            <h2 class="section-title">No fue posible abrir la conversacion</h2>
+            <p class="section-subtitle">${escapeHtml(
+              error.message || "No se pudo cargar la conversacion"
+            )}</p>
+          </div>
+        `;
+        messageList.innerHTML = `
+          <div class="empty-state">
+            Revisa si el usuario sigue existiendo o vuelve a abrir el mensaje desde una publicacion valida.
+          </div>
+        `;
+        contextHint.textContent = "Sin contexto de publicacion seleccionado.";
+        sendBtn.disabled = true;
       }
     }
 
