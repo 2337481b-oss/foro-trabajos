@@ -7,26 +7,21 @@
 
 <body>
 
-<!-- 🔒 PROTECCIÓN -->
 <script>
 if (!localStorage.getItem("userId")) {
   window.location.href = "login.html";
 }
 </script>
 
-<!-- 🧭 NAVBAR -->
 <div class="navbar">
   <h3>💼 Foro</h3>
-
   <div>
     <span id="userName"></span>
-    <a href="index.html">Inicio</a>
     <a href="post.html">Publicar</a>
     <button onclick="logout()">Cerrar sesión</button>
   </div>
 </div>
 
-<!-- 📄 CONTENIDO -->
 <div class="container fade-in">
   <h2>Publicaciones</h2>
   <div id="posts"></div>
@@ -34,9 +29,8 @@ if (!localStorage.getItem("userId")) {
 
 <script>
 
-// 👤 MOSTRAR USUARIO
-document.getElementById("userName").innerText = 
-  "👤 " + (localStorage.getItem("username") || "Usuario");
+document.getElementById("userName").innerText =
+  "👤 " + localStorage.getItem("username");
 
 // 🚪 LOGOUT
 function logout(){
@@ -44,21 +38,17 @@ function logout(){
   window.location.href = "login.html";
 }
 
-// 📡 CARGAR POSTS
+// 📡 POSTS
 fetch("https://foro-trabajos.onrender.com/posts")
 .then(res => res.json())
 .then(data => {
   const container = document.getElementById("posts");
-  container.innerHTML = "";
 
   data.reverse().forEach(post => {
-
-    const postHTML = `
+    container.innerHTML += `
       <div class="card post">
 
-        <div class="post-header">
-          <strong>👤 Usuario</strong>
-        </div>
+        <div class="post-header">👤 Usuario</div>
 
         ${post.media ? `<img src="${post.media}" class="post-img">` : ""}
 
@@ -73,24 +63,72 @@ fetch("https://foro-trabajos.onrender.com/posts")
           </button>
         </div>
 
+        <!-- 💬 COMENTARIOS -->
+        <div class="comments" id="comments-${post._id}">
+          <div id="list-${post._id}"></div>
+
+          <div class="comment-input">
+            <input id="input-${post._id}" placeholder="Escribe un comentario...">
+            <button onclick="addComment('${post._id}')">Enviar</button>
+          </div>
+        </div>
+
       </div>
     `;
 
-    container.innerHTML += postHTML;
+    loadComments(post._id);
   });
 });
 
-// ❤️ LIKE SIN RECARGAR
+// ❤️ LIKE
 function likePost(id){
   fetch(`https://foro-trabajos.onrender.com/like/${id}`, {
     method:"POST"
   })
   .then(() => {
-    const likeSpan = document.getElementById("likes-" + id);
-    likeSpan.innerText = parseInt(likeSpan.innerText) + 1;
+    const el = document.getElementById("likes-" + id);
+    el.innerText = parseInt(el.innerText) + 1;
+  });
+}
+
+// 💬 CARGAR COMENTARIOS
+function loadComments(postId){
+  fetch(`https://foro-trabajos.onrender.com/comments/${postId}`)
+  .then(res => res.json())
+  .then(data => {
+    const list = document.getElementById("list-" + postId);
+    list.innerHTML = "";
+
+    data.forEach(c => {
+      list.innerHTML += `
+        <div class="comment">
+          <strong>${c.username}:</strong> ${c.content}
+        </div>
+      `;
+    });
+  });
+}
+
+// 💬 AGREGAR COMENTARIO
+function addComment(postId){
+
+  const input = document.getElementById("input-" + postId);
+  const text = input.value;
+
+  if (!text) return;
+
+  fetch("https://foro-trabajos.onrender.com/comment", {
+    method:"POST",
+    headers:{"Content-Type":"application/json"},
+    body: JSON.stringify({
+      postId: postId,
+      username: localStorage.getItem("username"),
+      content: text
+    })
   })
-  .catch(() => {
-    alert("Error al dar like");
+  .then(() => {
+    input.value = "";
+    loadComments(postId); // recargar solo comentarios
   });
 }
 

@@ -16,14 +16,14 @@ app.use(express.json());
 app.use(cors());
 app.use(express.static(path.join(__dirname, "public")));
 
-// ☁️ CONFIGURACIÓN CLOUDINARY
+// ☁️ CLOUDINARY
 cloudinary.config({
   cloud_name: process.env.CLOUD_NAME,
   api_key: process.env.API_KEY,
   api_secret: process.env.API_SECRET
 });
 
-// 🔌 CONEXIÓN MONGODB
+// 🔌 MONGODB
 mongoose.connect(process.env.MONGO_URI)
 .then(() => console.log("✅ Conectado a MongoDB"))
 .catch(err => console.log(err));
@@ -40,7 +40,15 @@ const Post = mongoose.model("Post", {
   description: String,
   media: String,
   userId: String,
-  likes: { type: Number, default: 0 } // ❤️ agregado
+  likes: { type: Number, default: 0 }
+});
+
+// 🆕 MODELO COMENTARIOS
+const Comment = mongoose.model("Comment", {
+  postId: String,
+  username: String,
+  content: String,
+  createdAt: { type: Date, default: Date.now }
 });
 
 const Message = mongoose.model("Message", {
@@ -49,14 +57,13 @@ const Message = mongoose.model("Message", {
   content: String
 });
 
-// 🔐 REGISTRO
+// 🔐 REGISTER
 app.post("/register", async (req, res) => {
 
   if (!req.body.email || !req.body.password) {
     return res.status(400).send("Datos incompletos");
   }
 
-  // 🔒 evitar duplicados
   const existingUser = await User.findOne({ email: req.body.email });
   if (existingUser) {
     return res.status(400).send("El usuario ya existe");
@@ -73,6 +80,7 @@ app.post("/register", async (req, res) => {
 
     await user.save();
     res.send("Usuario registrado");
+
   } catch (error) {
     console.log(error);
     res.status(500).send("Error al registrar usuario");
@@ -114,6 +122,7 @@ app.post("/post", upload.single("media"), async (req, res) => {
 
     await post.save();
     res.send("Publicación creada");
+
   } catch (err) {
     console.log(err);
     res.status(500).send("Error al publicar");
@@ -133,8 +142,44 @@ app.post("/like/:id", async (req, res) => {
       $inc: { likes: 1 }
     });
     res.send("Like agregado");
+
   } catch (err) {
     res.status(500).send("Error al dar like");
+  }
+});
+
+// 💬 CREAR COMENTARIO
+app.post("/comment", async (req, res) => {
+  try {
+    if (!req.body.postId || !req.body.content) {
+      return res.status(400).send("Datos incompletos");
+    }
+
+    const comment = new Comment({
+      postId: req.body.postId,
+      username: req.body.username,
+      content: req.body.content
+    });
+
+    await comment.save();
+    res.send("Comentario agregado");
+
+  } catch (err) {
+    console.log(err);
+    res.status(500).send("Error al comentar");
+  }
+});
+
+// 📄 OBTENER COMENTARIOS
+app.get("/comments/:postId", async (req, res) => {
+  try {
+    const comments = await Comment.find({ postId: req.params.postId })
+    .sort({ createdAt: -1 }); // 👈 más nuevos arriba
+
+    res.json(comments);
+
+  } catch (err) {
+    res.status(500).send("Error al obtener comentarios");
   }
 });
 
@@ -144,6 +189,7 @@ app.post("/message", async (req, res) => {
     const msg = new Message(req.body);
     await msg.save();
     res.send("Mensaje enviado");
+
   } catch (err) {
     res.status(500).send("Error al enviar mensaje");
   }
