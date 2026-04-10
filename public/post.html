@@ -13,11 +13,29 @@
   <input id="title" placeholder="Título">
   <input id="description" placeholder="Descripción">
   <input type="file" id="media">
+  <input type="file" id="media" onchange="previewImage()">
+
+<img id="preview" style="width:100%; margin-top:10px; display:none;">
 
   <button onclick="upload()">Publicar</button>
 </div>
 
 <script>
+  function previewImage(){
+  const file = media.files[0];
+
+  if(file){
+    const reader = new FileReader();
+
+    reader.onload = function(e){
+      const preview = document.getElementById("preview");
+      preview.src = e.target.result;
+      preview.style.display = "block";
+    }
+
+    reader.readAsDataURL(file);
+  }
+}
 function upload(){
 
   const titleInput = document.getElementById("title");
