@@ -545,6 +545,22 @@ button,
 .comment-list {
   display: grid;
   gap: 10px;
+  max-height: min(60vh, 520px);
+  overflow-y: auto;
+  padding-right: 6px;
+}
+
+.comment-list::-webkit-scrollbar {
+  width: 8px;
+}
+
+.comment-list::-webkit-scrollbar-thumb {
+  background: rgba(168, 85, 247, 0.28);
+  border-radius: 999px;
+}
+
+.comment-list.updating {
+  opacity: 0.8;
 }
 
 .comment {

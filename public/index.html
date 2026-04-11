@@ -426,7 +426,18 @@
 
     async function loadComments(postId) {
       const list = document.getElementById(`list-${postId}`);
-      list.innerHTML = '<div class="empty-state">Cargando comentarios...</div>';
+      if (!list) {
+        return;
+      }
+
+      const previousScrollTop = list.scrollTop;
+      const hasExistingComments = list.children.length > 0 && !list.querySelector(".empty-state");
+
+      if (!hasExistingComments) {
+        list.innerHTML = '<div class="empty-state">Cargando comentarios...</div>';
+      } else {
+        list.classList.add("updating");
+      }
 
       try {
         const response = await fetch(`${API_BASE}/comments/${postId}`, {
@@ -441,6 +452,7 @@
 
         if (!comments.length) {
           list.innerHTML = '<div class="empty-state">Todavia no hay comentarios en esta publicacion.</div>';
+          list.classList.remove("updating");
           return;
         }
 
@@ -454,8 +466,11 @@
             `
           )
           .join("");
+        list.scrollTop = previousScrollTop;
+        list.classList.remove("updating");
       } catch (error) {
         list.innerHTML = `<div class="empty-state">${escapeHtml(error.message)}</div>`;
+        list.classList.remove("updating");
       }
     }
 
