@@ -29,10 +29,10 @@
 
       <nav class="nav-links">
         <span class="user-chip" id="userChip"></span>
-        <a class="nav-link" href="index.html">Inicio</a>
-        <a class="nav-link" href="post.html">Publicar</a>
-        <a class="nav-link" href="messages.html">Mensajes</a>
-        <a class="nav-link active" href="profile.html">Perfil</a>
+        <a class="nav-link" href="index.html" onclick="closeMobileNav()"><span class="nav-link-row">Inicio</span></a>
+        <a class="nav-link" href="post.html" onclick="closeMobileNav()"><span class="nav-link-row">Publicar</span></a>
+        <a class="nav-link" href="messages.html" onclick="closeMobileNav()"><span class="nav-link-row">Mensajes <span class="nav-badge" id="messagesBadge"></span></span></a>
+        <a class="nav-link active" href="profile.html" onclick="closeMobileNav()"><span class="nav-link-row">Perfil</span></a>
         <button class="button-secondary" type="button" onclick="logout()">Cerrar sesion</button>
       </nav>
     </header>
@@ -99,6 +99,7 @@
     const token = localStorage.getItem("token");
     const currentUserId = localStorage.getItem("userId");
     const navbar = document.querySelector(".navbar");
+    const messagesBadge = document.getElementById("messagesBadge");
     const status = document.getElementById("status");
     const bioInput = document.getElementById("bio");
     const avatarContainer = document.getElementById("profileAvatar");
@@ -107,6 +108,10 @@
 
     function toggleMobileNav() {
       navbar.classList.toggle("mobile-open");
+    }
+
+    function closeMobileNav() {
+      navbar.classList.remove("mobile-open");
     }
 
     function logout() {
@@ -119,6 +124,35 @@
         ...extra,
         Authorization: `Bearer ${token}`,
       };
+    }
+
+    async function refreshMessagesBadge() {
+      try {
+        const response = await fetch(`${API_BASE}/messages`, {
+          headers: authHeaders(),
+        });
+
+        if (!response.ok) {
+          return;
+        }
+
+        const conversations = await response.json();
+        const lastSeenAt = localStorage.getItem("messagesLastSeenAt");
+        const lastSeenTime = lastSeenAt ? new Date(lastSeenAt).getTime() : 0;
+        const unseenCount = conversations.filter((conversation) => {
+          const latest = conversation.latestMessage;
+          return (
+            latest &&
+            latest.from !== currentUserId &&
+            latest.createdAt &&
+            new Date(latest.createdAt).getTime() > lastSeenTime
+          );
+        }).length;
+
+        messagesBadge.textContent = unseenCount > 0 ? String(unseenCount) : "";
+      } catch (error) {
+        messagesBadge.textContent = "";
+      }
     }
 
     function showStatus(message, variant) {
@@ -256,6 +290,7 @@
 
     bioInput.addEventListener("input", updateBioCounter);
     loadProfile();
+    refreshMessagesBadge();
   </script>
 </body>
 </html>

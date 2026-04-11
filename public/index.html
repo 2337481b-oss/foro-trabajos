@@ -29,10 +29,10 @@
 
       <nav class="nav-links">
         <span class="user-chip" id="userChip">Tu perfil</span>
-        <a class="nav-link active" href="index.html">Inicio</a>
-        <a class="nav-link" href="post.html">Publicar</a>
-        <a class="nav-link" href="messages.html">Mensajes</a>
-        <a class="nav-link" href="profile.html">Perfil</a>
+        <a class="nav-link active" href="index.html" onclick="closeMobileNav()"><span class="nav-link-row">Inicio</span></a>
+        <a class="nav-link" href="post.html" onclick="closeMobileNav()"><span class="nav-link-row">Publicar</span></a>
+        <a class="nav-link" href="messages.html" onclick="closeMobileNav()"><span class="nav-link-row">Mensajes <span class="nav-badge" id="messagesBadge"></span></span></a>
+        <a class="nav-link" href="profile.html" onclick="closeMobileNav()"><span class="nav-link-row">Perfil</span></a>
         <button class="button-secondary" type="button" onclick="logout()">Cerrar sesion</button>
       </nav>
     </header>
@@ -95,15 +95,21 @@
     const postCount = document.getElementById("postCount");
     const userChip = document.getElementById("userChip");
     const navbar = document.querySelector(".navbar");
+    const messagesBadge = document.getElementById("messagesBadge");
     const imageModal = document.getElementById("imageModal");
     const modalImage = document.getElementById("modalImage");
     const openComments = new Set();
+    const commentDrafts = new Map();
     let postsRefreshInterval = null;
 
     userChip.textContent = currentUsername;
 
     function toggleMobileNav() {
       navbar.classList.toggle("mobile-open");
+    }
+
+    function closeMobileNav() {
+      navbar.classList.remove("mobile-open");
     }
 
     function openImageModal(src, title) {
@@ -121,6 +127,15 @@
       modalImage.src = "";
     }
 
+    function rememberDraft(postId) {
+      const input = document.getElementById(`input-${postId}`);
+      if (!input) {
+        return;
+      }
+
+      commentDrafts.set(postId, input.value);
+    }
+
     function logout() {
       localStorage.clear();
       window.location.href = "login.html";
@@ -131,6 +146,36 @@
         ...extra,
         Authorization: `Bearer ${token}`,
       };
+    }
+
+    async function refreshMessagesBadge() {
+      try {
+        const response = await fetch(`${API_BASE}/messages`, {
+          headers: authHeaders(),
+        });
+
+        if (!response.ok) {
+          return;
+        }
+
+        const conversations = await response.json();
+        const lastSeenAt = localStorage.getItem("messagesLastSeenAt");
+        const lastSeenTime = lastSeenAt ? new Date(lastSeenAt).getTime() : 0;
+
+        const unseenCount = conversations.filter((conversation) => {
+          const latest = conversation.latestMessage;
+          return (
+            latest &&
+            latest.from !== currentUserId &&
+            latest.createdAt &&
+            new Date(latest.createdAt).getTime() > lastSeenTime
+          );
+        }).length;
+
+        messagesBadge.textContent = unseenCount > 0 ? String(unseenCount) : "";
+      } catch (error) {
+        messagesBadge.textContent = "";
+      }
     }
 
     function escapeHtml(value) {
@@ -208,6 +253,11 @@
             openComments.add(postId);
             loadComments(postId);
           }
+
+          const input = document.getElementById(`input-${postId}`);
+          if (input && commentDrafts.has(postId)) {
+            input.value = commentDrafts.get(postId);
+          }
         });
       } catch (error) {
         postsContainer.innerHTML = `
@@ -278,7 +328,12 @@
               </div>
 
               <div class="comment-input">
-                <input id="input-${post._id}" maxlength="300" placeholder="Escribe un comentario profesional o una duda">
+                <input
+                  id="input-${post._id}"
+                  maxlength="300"
+                  placeholder="Escribe un comentario profesional o una duda"
+                  oninput="rememberDraft('${post._id}')"
+                >
                 <button type="button" onclick="addComment('${post._id}')">Enviar</button>
               </div>
             </div>
@@ -410,6 +465,7 @@
         }
 
         input.value = "";
+        commentDrafts.delete(postId);
         const counter = document.getElementById(`count-${postId}`);
         counter.textContent = Number(counter.textContent) + 1;
         await loadComments(postId);
@@ -425,9 +481,11 @@
     });
 
     loadPosts();
+    refreshMessagesBadge();
     postsRefreshInterval = window.setInterval(() => {
       loadPosts(false);
       openComments.forEach((postId) => loadComments(postId));
+      refreshMessagesBadge();
     }, 10000);
   </script>
 </body>

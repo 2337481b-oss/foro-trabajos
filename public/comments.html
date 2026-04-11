@@ -29,9 +29,9 @@
 
       <nav class="nav-links">
         <span class="user-chip" id="userChip"></span>
-        <a class="nav-link" href="index.html">Inicio</a>
-        <a class="nav-link" href="messages.html">Mensajes</a>
-        <a class="nav-link" href="profile.html">Perfil</a>
+        <a class="nav-link" href="index.html" onclick="closeMobileNav()"><span class="nav-link-row">Inicio</span></a>
+        <a class="nav-link" href="messages.html" onclick="closeMobileNav()"><span class="nav-link-row">Mensajes <span class="nav-badge" id="messagesBadge"></span></span></a>
+        <a class="nav-link" href="profile.html" onclick="closeMobileNav()"><span class="nav-link-row">Perfil</span></a>
         <button class="button-secondary" type="button" onclick="logout()">Cerrar sesion</button>
       </nav>
     </header>
@@ -89,14 +89,21 @@
     const userChip = document.getElementById("userChip");
     const messageAuthorLink = document.getElementById("messageAuthorLink");
     const navbar = document.querySelector(".navbar");
+    const messagesBadge = document.getElementById("messagesBadge");
     const imageModal = document.getElementById("imageModal");
     const modalImage = document.getElementById("modalImage");
+    const commentInput = document.getElementById("commentInput");
     let commentsInterval = null;
+    let commentDraft = "";
 
     userChip.textContent = localStorage.getItem("username") || "Usuario";
 
     function toggleMobileNav() {
       navbar.classList.toggle("mobile-open");
+    }
+
+    function closeMobileNav() {
+      navbar.classList.remove("mobile-open");
     }
 
     function openImageModal(src, title) {
@@ -112,6 +119,10 @@
 
       imageModal.classList.remove("active");
       modalImage.src = "";
+    }
+
+    function rememberDraft() {
+      commentDraft = commentInput.value;
     }
 
     function logout() {
@@ -133,6 +144,35 @@
         .replace(/>/g, "&gt;")
         .replace(/"/g, "&quot;")
         .replace(/'/g, "&#39;");
+    }
+
+    async function refreshMessagesBadge() {
+      try {
+        const response = await fetch(`${API_BASE}/messages`, {
+          headers: authHeaders(),
+        });
+
+        if (!response.ok) {
+          return;
+        }
+
+        const conversations = await response.json();
+        const lastSeenAt = localStorage.getItem("messagesLastSeenAt");
+        const lastSeenTime = lastSeenAt ? new Date(lastSeenAt).getTime() : 0;
+        const unseenCount = conversations.filter((conversation) => {
+          const latest = conversation.latestMessage;
+          return (
+            latest &&
+            latest.from !== currentUserId &&
+            latest.createdAt &&
+            new Date(latest.createdAt).getTime() > lastSeenTime
+          );
+        }).length;
+
+        messagesBadge.textContent = unseenCount > 0 ? String(unseenCount) : "";
+      } catch (error) {
+        messagesBadge.textContent = "";
+      }
     }
 
     function formatDate(dateString) {
@@ -211,6 +251,7 @@
     }
 
     async function loadComments() {
+      const activeElementId = document.activeElement?.id;
       commentsContainer.innerHTML = '<div class="empty-state">Cargando comentarios...</div>';
 
       try {
@@ -239,6 +280,15 @@
             `
           )
           .join("");
+
+        if (commentDraft) {
+          commentInput.value = commentDraft;
+        }
+
+        if (activeElementId === "commentInput") {
+          commentInput.focus();
+          commentInput.setSelectionRange(commentInput.value.length, commentInput.value.length);
+        }
       } catch (error) {
         commentsContainer.innerHTML = `<div class="empty-state">${escapeHtml(error.message)}</div>`;
       }
@@ -267,14 +317,17 @@
         }
 
         input.value = "";
+        commentDraft = "";
         await loadComments();
       } catch (error) {
         alert(error.message || "No se pudo enviar el comentario");
       }
     }
 
+    commentInput.addEventListener("input", rememberDraft);
     loadPost();
     loadComments();
+    refreshMessagesBadge();
     document.addEventListener("keydown", (event) => {
       if (event.key === "Escape") {
         closeImageModal();
@@ -283,6 +336,7 @@
     commentsInterval = window.setInterval(() => {
       loadPost();
       loadComments();
+      refreshMessagesBadge();
     }, 10000);
   </script>
 </body>

@@ -29,10 +29,10 @@
 
       <nav class="nav-links">
         <span class="user-chip" id="userChip"></span>
-        <a class="nav-link" href="index.html">Inicio</a>
-        <a class="nav-link" href="post.html">Publicar</a>
-        <a class="nav-link active" href="messages.html">Mensajes</a>
-        <a class="nav-link" href="profile.html">Perfil</a>
+        <a class="nav-link" href="index.html" onclick="closeMobileNav()"><span class="nav-link-row">Inicio</span></a>
+        <a class="nav-link" href="post.html" onclick="closeMobileNav()"><span class="nav-link-row">Publicar</span></a>
+        <a class="nav-link active" href="messages.html" onclick="closeMobileNav()"><span class="nav-link-row">Mensajes <span class="nav-badge" id="messagesBadge"></span></span></a>
+        <a class="nav-link" href="profile.html" onclick="closeMobileNav()"><span class="nav-link-row">Perfil</span></a>
         <button class="button-secondary" type="button" onclick="logout()">Cerrar sesion</button>
       </nav>
     </header>
@@ -94,6 +94,7 @@
     const contextHint = document.getElementById("contextHint");
     const userChip = document.getElementById("userChip");
     const navbar = document.querySelector(".navbar");
+    const messagesBadge = document.getElementById("messagesBadge");
 
     const query = new URLSearchParams(window.location.search);
     let selectedUserId = query.get("userId") || "";
@@ -106,6 +107,10 @@
 
     function toggleMobileNav() {
       navbar.classList.toggle("mobile-open");
+    }
+
+    function closeMobileNav() {
+      navbar.classList.remove("mobile-open");
     }
 
     function logout() {
@@ -199,6 +204,8 @@
         }
 
         const conversations = await response.json();
+        localStorage.setItem("messagesLastSeenAt", new Date().toISOString());
+        messagesBadge.textContent = "";
 
         if (selectedUserId && !conversations.find((item) => item.partner?._id === selectedUserId)) {
           await loadSinglePartner(selectedUserId);
