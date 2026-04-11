@@ -1,0 +1,217 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Perfil de usuario</title>
+  <link rel="stylesheet" href="css/styles.css">
+</head>
+<body>
+  <script>
+    if (!localStorage.getItem("token") || !localStorage.getItem("userId")) {
+      window.location.href = "login.html";
+    }
+  </script>
+
+  <div class="page-shell fade-in">
+    <header class="navbar">
+      <div class="brand">
+        <h1 class="brand-title">UniEmpleos</h1>
+      </div>
+
+      <button class="button-secondary nav-toggle" type="button" onclick="toggleMobileNav()">Menu</button>
+
+      <nav class="nav-links">
+        <span class="user-chip" id="userChip"></span>
+        <a class="nav-link" href="index.html" onclick="closeMobileNav()"><span class="nav-link-row">Inicio</span></a>
+        <a class="nav-link" href="post.html" onclick="closeMobileNav()"><span class="nav-link-row">Publicar</span></a>
+        <a class="nav-link" href="messages.html" onclick="closeMobileNav()"><span class="nav-link-row">Mensajes <span class="nav-badge" id="messagesBadge"></span></span></a>
+        <a class="nav-link" href="profile.html" onclick="closeMobileNav()"><span class="nav-link-row">Perfil</span></a>
+        <button class="button-secondary" type="button" onclick="logout()">Cerrar sesion</button>
+      </nav>
+    </header>
+
+    <main class="profile-layout">
+      <aside class="panel profile-hero">
+        <div class="profile-summary">
+          <div class="profile-avatar-wrap" id="profileAvatar"></div>
+          <div>
+            <h2 class="section-title" id="profileName">Cargando usuario...</h2>
+            <p class="section-subtitle" id="profileBio">Cargando descripcion...</p>
+          </div>
+          <div class="hero-stats">
+            <div class="stat-pill">
+              <strong id="profileEmail">-</strong>
+              <span class="helper-text">correo</span>
+            </div>
+            <div class="stat-pill">
+              <strong id="profilePostCount">0</strong>
+              <span class="helper-text">publicaciones</span>
+            </div>
+          </div>
+          <div class="profile-actions">
+            <a class="button" id="messageButton" href="messages.html">Enviar mensaje</a>
+          </div>
+        </div>
+      </aside>
+
+      <section class="panel">
+        <h2 class="section-title">Publicaciones del usuario</h2>
+        <p class="section-subtitle">Aqui puedes revisar lo que ha compartido en UniEmpleos.</p>
+        <div class="post-list" id="userPosts"></div>
+      </section>
+    </main>
+  </div>
+
+  <script>
+    const API_BASE =
+      window.location.protocol === "file:"
+        ? "https://foro-trabajos.onrender.com"
+        : window.location.origin;
+    const token = localStorage.getItem("token");
+    const currentUserId = localStorage.getItem("userId");
+    const userId = new URLSearchParams(window.location.search).get("userId");
+    const navbar = document.querySelector(".navbar");
+    const messagesBadge = document.getElementById("messagesBadge");
+
+    document.getElementById("userChip").textContent = localStorage.getItem("username") || "Usuario";
+
+    function toggleMobileNav() {
+      navbar.classList.toggle("mobile-open");
+    }
+
+    function closeMobileNav() {
+      navbar.classList.remove("mobile-open");
+    }
+
+    function logout() {
+      localStorage.clear();
+      window.location.href = "login.html";
+    }
+
+    function authHeaders(extra = {}) {
+      return {
+        ...extra,
+        Authorization: `Bearer ${token}`,
+      };
+    }
+
+    function escapeHtml(value) {
+      return String(value || "")
+        .replace(/&/g, "&amp;")
+        .replace(/</g, "&lt;")
+        .replace(/>/g, "&gt;")
+        .replace(/"/g, "&quot;")
+        .replace(/'/g, "&#39;");
+    }
+
+    function renderAvatar(user) {
+      const container = document.getElementById("profileAvatar");
+
+      if (user?.avatar) {
+        container.innerHTML = `<img class="avatar-lg" src="${user.avatar}" alt="Avatar de ${escapeHtml(user.username)}">`;
+        return;
+      }
+
+      const initials = String(user?.username || "U")
+        .split(" ")
+        .filter(Boolean)
+        .slice(0, 2)
+        .map((part) => part[0].toUpperCase())
+        .join("");
+
+      container.innerHTML = `<div class="avatar-placeholder avatar-lg">${escapeHtml(initials)}</div>`;
+    }
+
+    function formatDate(dateString) {
+      return new Date(dateString).toLocaleString("es-MX", {
+        dateStyle: "medium",
+        timeStyle: "short",
+      });
+    }
+
+    async function refreshMessagesBadge() {
+      try {
+        const response = await fetch(`${API_BASE}/messages`, {
+          headers: authHeaders(),
+        });
+
+        if (!response.ok) {
+          return;
+        }
+
+        const conversations = await response.json();
+        const lastSeenAt = localStorage.getItem("messagesLastSeenAt");
+        const lastSeenTime = lastSeenAt ? new Date(lastSeenAt).getTime() : 0;
+        const unseenCount = conversations.filter((conversation) => {
+          const latest = conversation.latestMessage;
+          return (
+            latest &&
+            latest.from !== currentUserId &&
+            latest.createdAt &&
+            new Date(latest.createdAt).getTime() > lastSeenTime
+          );
+        }).length;
+
+        messagesBadge.textContent = unseenCount > 0 ? String(unseenCount) : "";
+      } catch (error) {
+        messagesBadge.textContent = "";
+      }
+    }
+
+    async function loadUserProfile() {
+      const postsContainer = document.getElementById("userPosts");
+
+      try {
+        const [userResponse, postsResponse] = await Promise.all([
+          fetch(`${API_BASE}/user/${userId}`, { headers: authHeaders() }),
+          fetch(`${API_BASE}/posts/user/${userId}`, { headers: authHeaders() }),
+        ]);
+
+        if (!userResponse.ok) {
+          throw new Error("No se pudo cargar el perfil del usuario");
+        }
+
+        const user = await userResponse.json();
+        const posts = postsResponse.ok ? await postsResponse.json() : [];
+
+        document.getElementById("profileName").textContent = user.username || "Usuario";
+        document.getElementById("profileBio").textContent = user.bio || "Este usuario aun no agrego una descripcion.";
+        document.getElementById("profileEmail").textContent = user.email || "-";
+        document.getElementById("profilePostCount").textContent = posts.length;
+        document.getElementById("messageButton").href =
+          String(user._id) === String(currentUserId)
+            ? "messages.html"
+            : `messages.html?userId=${encodeURIComponent(user._id)}`;
+
+        renderAvatar(user);
+
+        if (!posts.length) {
+          postsContainer.innerHTML = '<div class="empty-state">Este usuario aun no ha publicado nada.</div>';
+          return;
+        }
+
+        postsContainer.innerHTML = posts
+          .map(
+            (post) => `
+              <article class="card post-card">
+                <div class="post-copy">
+                  <h3>${escapeHtml(post.title)}</h3>
+                  <p>${escapeHtml(post.description)}</p>
+                  <p class="timestamp">${escapeHtml(formatDate(post.createdAt))}</p>
+                </div>
+                ${post.media ? `<img class="post-image" src="${post.media}" alt="Imagen de ${escapeHtml(post.title)}">` : ""}
+              </article>
+            `
+          )
+          .join("");
+      } catch (error) {
+        postsContainer.innerHTML = `<div class="empty-state">${escapeHtml(error.message)}</div>`;
+      }
+    }
+
+    refreshMessagesBadge();
+    loadUserProfile();
+  </script>
+</body>
+</html>

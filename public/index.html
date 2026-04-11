@@ -15,17 +15,11 @@
 
   <div class="page-shell fade-in">
     <header class="navbar">
-      <div class="nav-header-mobile">
-        <div class="brand">
-          <div class="brand-mark">FT</div>
-          <div class="brand-copy">
-            <h1>Foro de Trabajos</h1>
-            <p>Comparte ideas, recibe comentarios y conecta en privado.</p>
-          </div>
-        </div>
-
-        <button class="button-secondary nav-toggle" type="button" onclick="toggleMobileNav()">Menu</button>
+      <div class="brand">
+        <h1 class="brand-title">UniEmpleos</h1>
       </div>
+
+      <button class="button-secondary nav-toggle" type="button" onclick="toggleMobileNav()">Menu</button>
 
       <nav class="nav-links">
         <span class="user-chip" id="userChip">Tu perfil</span>
@@ -277,10 +271,12 @@
           <div class="post-head">
             <div class="author-meta">
               ${renderAvatar(author)}
-              <div>
-                <h3>${escapeHtml(author.username)}</h3>
-                <p class="timestamp">${escapeHtml(formatDate(post.createdAt))}</p>
-              </div>
+              <a class="author-link" href="user.html?userId=${encodeURIComponent(author._id || post.userId)}">
+                <div>
+                  <h3>${escapeHtml(author.username)}</h3>
+                  <p class="timestamp">${escapeHtml(formatDate(post.createdAt))}</p>
+                </div>
+              </a>
             </div>
             ${isOwnPost ? '<span class="helper-text">Tu publicacion</span>' : '<span class="helper-text">Disponible para contacto</span>'}
           </div>
