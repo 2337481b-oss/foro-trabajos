@@ -575,6 +575,13 @@ button,
   margin-bottom: 4px;
 }
 
+.comment-time {
+  display: block;
+  margin-top: 8px;
+  font-size: 0.78rem;
+  color: var(--muted);
+}
+
 .comment-input {
   display: flex;
   gap: 10px;
@@ -871,6 +878,29 @@ button,
 
   .message-bubble {
     max-width: 100%;
+  }
+
+  .messages-layout {
+    gap: 14px;
+  }
+
+  .sidebar-card,
+  .thread-panel,
+  .panel,
+  .container {
+    border-radius: 20px;
+  }
+
+  .thread-header {
+    padding: 14px;
+  }
+
+  .message-list {
+    padding: 14px;
+  }
+
+  .thread-panel .form-grid {
+    padding: 12px 14px 14px;
   }
 
   .form-card {

@@ -143,6 +143,10 @@
       });
     }
 
+    function isNearBottom(element) {
+      return element.scrollHeight - element.scrollTop - element.clientHeight < 80;
+    }
+
     function renderAvatar(user, sizeClass = "avatar") {
       if (user?.avatar) {
         return `<img class="${sizeClass}" src="${user.avatar}" alt="Avatar de ${escapeHtml(user.username)}">`;
@@ -305,7 +309,12 @@
       }
 
       sendBtn.disabled = false;
-      if (!silent) {
+      const previousScrollTop = messageList.scrollTop;
+      const keepBottom = isNearBottom(messageList);
+      const hasExistingMessages =
+        messageList.children.length > 0 && !messageList.querySelector(".empty-state");
+
+      if (!silent && !hasExistingMessages) {
         messageList.innerHTML = '<div class="empty-state">Cargando mensajes...</div>';
       }
 
@@ -361,7 +370,11 @@
           })
           .join("");
 
-        messageList.scrollTop = messageList.scrollHeight;
+        if (keepBottom || !hasExistingMessages) {
+          messageList.scrollTop = messageList.scrollHeight;
+        } else {
+          messageList.scrollTop = previousScrollTop;
+        }
       } catch (error) {
         threadHeader.innerHTML = `
           <div>
@@ -432,7 +445,8 @@
     }
 
     messageInput.addEventListener("keydown", (event) => {
-      if (event.ctrlKey && event.key === "Enter") {
+      if ((event.key === "Enter" && !event.shiftKey) || (event.ctrlKey && event.key === "Enter")) {
+        event.preventDefault();
         sendMessage();
       }
     });

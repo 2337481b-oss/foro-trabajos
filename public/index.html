@@ -205,6 +205,15 @@
       });
     }
 
+    function formatTime(dateString) {
+      if (!dateString) return "";
+
+      return new Date(dateString).toLocaleTimeString("es-MX", {
+        hour: "2-digit",
+        minute: "2-digit",
+      });
+    }
+
     function renderAvatar(user, sizeClass = "avatar") {
       if (user && user.avatar) {
         return `<img class="${sizeClass}" src="${user.avatar}" alt="Avatar de ${escapeHtml(user.username)}">`;
@@ -462,6 +471,7 @@
               <article class="comment">
                 <strong>${escapeHtml(comment.username)}</strong>
                 <span>${escapeHtml(comment.content)}</span>
+                <span class="comment-time">${escapeHtml(formatTime(comment.createdAt))}</span>
               </article>
             `
           )
@@ -521,6 +531,17 @@
 
     loadPosts();
     refreshMessagesBadge();
+    document.addEventListener("keydown", (event) => {
+      const target = event.target;
+      if (!target || !target.id || !target.id.startsWith("input-")) {
+        return;
+      }
+
+      if (event.key === "Enter" && !event.shiftKey) {
+        event.preventDefault();
+        addComment(target.id.replace("input-", ""));
+      }
+    });
     postsRefreshInterval = window.setInterval(() => {
       const focusedId = document.activeElement?.id || "";
       const shouldRefreshFeed = !focusedId.startsWith("input-") && openComments.size === 0;

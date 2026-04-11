@@ -182,6 +182,13 @@
       });
     }
 
+    function formatTime(dateString) {
+      return new Date(dateString).toLocaleTimeString("es-MX", {
+        hour: "2-digit",
+        minute: "2-digit",
+      });
+    }
+
     function renderAvatar(user) {
       if (user?.avatar) {
         return `<img class="avatar" src="${user.avatar}" alt="Avatar de ${escapeHtml(user.username)}">`;
@@ -285,6 +292,7 @@
               <article class="comment">
                 <strong>${escapeHtml(comment.username)}</strong>
                 <span>${escapeHtml(comment.content)}</span>
+                <span class="comment-time">${escapeHtml(formatTime(comment.createdAt))}</span>
               </article>
             `
           )
@@ -337,6 +345,12 @@
     }
 
     commentInput.addEventListener("input", rememberDraft);
+    commentInput.addEventListener("keydown", (event) => {
+      if (event.key === "Enter" && !event.shiftKey) {
+        event.preventDefault();
+        addComment();
+      }
+    });
     loadPost();
     loadComments();
     refreshMessagesBadge();
