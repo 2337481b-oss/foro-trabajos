@@ -19,7 +19,7 @@
         <h1 class="brand-title">UniEmpleos</h1>
       </div>
 
-      <div class="menu-shell" id="menuShell">
+      <div class="menu-shell" id="menuShell" onmouseenter="openMobileNav()" onmouseleave="closeMobileNav()">
         <button class="button-secondary nav-toggle" type="button" onclick="toggleMobileNav()">Menu</button>
 
         <nav class="nav-links">
@@ -103,6 +103,10 @@
 
     function toggleMobileNav() {
       menuShell.classList.toggle("mobile-open");
+    }
+
+    function openMobileNav() {
+      menuShell.classList.add("mobile-open");
     }
 
     function closeMobileNav() {
@@ -437,6 +441,11 @@
       await preloadPosts();
       await loadConversations();
       await loadThread();
+      document.addEventListener("click", (event) => {
+        if (!menuShell.contains(event.target)) {
+          closeMobileNav();
+        }
+      });
       messagesInterval = window.setInterval(async () => {
         await preloadPosts();
         await loadConversations(true);

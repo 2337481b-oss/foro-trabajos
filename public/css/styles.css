@@ -104,6 +104,10 @@ img {
 }
 
 .menu-shell {
+  position: fixed;
+  top: 20px;
+  right: 20px;
+  z-index: 40;
   display: grid;
   justify-items: end;
   gap: 10px;
@@ -829,6 +833,11 @@ button,
 
   .topbar {
     align-items: flex-start;
+  }
+
+  .menu-shell {
+    top: 14px;
+    right: 14px;
   }
 
   .modal {
