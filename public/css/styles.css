@@ -610,6 +610,12 @@ button,
   display: block;
   margin-bottom: 3px;
   font-size: 0.9rem;
+  text-align: left;
+}
+
+.comment span {
+  display: block;
+  text-align: left;
 }
 
 .comment-time {
@@ -617,6 +623,7 @@ button,
   margin-top: 6px;
   font-size: 0.72rem;
   color: var(--muted);
+  text-align: left;
 }
 
 .comment-input {
