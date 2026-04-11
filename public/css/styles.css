@@ -592,7 +592,7 @@ button,
 .comment {
   display: inline-block;
   width: fit-content;
-  max-width: 100%;
+  max-width: min(78%, 420px);
   padding: 9px 11px;
   border-radius: 14px;
   background: rgba(255, 255, 255, 0.04);
@@ -869,7 +869,9 @@ button,
 }
 
 .message-bubble {
-  max-width: min(72%, 540px);
+  display: inline-block;
+  width: fit-content;
+  max-width: min(66%, 460px);
   padding: 10px 12px;
   border-radius: 18px;
   line-height: 1.35;
@@ -879,6 +881,7 @@ button,
   word-break: break-word;
   white-space: pre-wrap;
   min-width: 0;
+  justify-self: start;
 }
 
 .messages-page-shell .thread-panel {
@@ -900,7 +903,7 @@ button,
 }
 
 .messages-page-shell .message-bubble {
-  max-width: min(78%, 640px);
+  max-width: min(70%, 500px);
 }
 
 .messages-page-shell .thread-panel .form-grid {
@@ -917,6 +920,7 @@ button,
   background: linear-gradient(135deg, var(--primary) 0%, var(--accent) 100%);
   color: white;
   border-bottom-right-radius: 8px;
+  justify-self: end;
 }
 
 .message-bubble.other {
@@ -1113,7 +1117,7 @@ button,
   }
 
   .messages-page-shell .message-bubble {
-    max-width: 100%;
+    max-width: min(88%, 280px);
     font-size: 0.84rem;
     padding: 8px 10px;
     border-radius: 14px;
