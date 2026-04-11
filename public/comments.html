@@ -182,10 +182,10 @@
       });
     }
 
-    function formatTime(dateString) {
-      return new Date(dateString).toLocaleTimeString("es-MX", {
-        hour: "2-digit",
-        minute: "2-digit",
+    function formatCommentDate(dateString) {
+      return new Date(dateString).toLocaleString("es-MX", {
+        dateStyle: "medium",
+        timeStyle: "short",
       });
     }
 
@@ -292,7 +292,7 @@
               <article class="comment">
                 <strong>${escapeHtml(comment.username)}</strong>
                 <span>${escapeHtml(comment.content)}</span>
-                <span class="comment-time">${escapeHtml(formatTime(comment.createdAt))}</span>
+                <span class="comment-time">${escapeHtml(formatCommentDate(comment.createdAt))}</span>
               </article>
             `
           )

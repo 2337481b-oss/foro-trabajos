@@ -584,25 +584,27 @@ button,
 }
 
 .comment {
-  padding: 12px 14px;
-  border-radius: 16px;
+  padding: 9px 11px;
+  border-radius: 14px;
   background: rgba(255, 255, 255, 0.04);
   border: 1px solid rgba(168, 85, 247, 0.12);
   overflow-wrap: anywhere;
   word-break: break-word;
   white-space: pre-wrap;
   min-width: 0;
+  font-size: 0.9rem;
 }
 
 .comment strong {
   display: block;
-  margin-bottom: 4px;
+  margin-bottom: 3px;
+  font-size: 0.9rem;
 }
 
 .comment-time {
   display: block;
-  margin-top: 8px;
-  font-size: 0.78rem;
+  margin-top: 6px;
+  font-size: 0.72rem;
   color: var(--muted);
 }
 
@@ -1064,6 +1066,15 @@ button,
     gap: 10px;
   }
 
+  .messages-page-shell .messages-layout.mobile-thread-open {
+    grid-template-columns: 1fr;
+  }
+
+  .messages-page-shell .messages-layout.mobile-thread-open .thread-panel {
+    min-height: 78vh;
+    max-height: 78vh;
+  }
+
   .messages-page-shell .sidebar-card,
   .messages-page-shell .thread-panel {
     max-height: none;
@@ -1071,45 +1082,50 @@ button,
   }
 
   .messages-page-shell .conversation-list {
-    max-height: 38vh;
+    max-height: 24vh;
   }
 
   .messages-page-shell .thread-panel {
     min-width: 0;
     max-width: 100%;
-    min-height: 58vh;
-    max-height: 58vh;
+    min-height: 68vh;
+    max-height: 68vh;
   }
 
   .messages-page-shell .thread-header {
-    padding: 10px 10px 8px;
+    padding: 6px 8px 5px;
+    gap: 8px;
   }
 
   .messages-page-shell .message-list {
-    padding: 10px;
-    gap: 8px;
+    padding: 8px;
+    gap: 6px;
   }
 
   .messages-page-shell .message-bubble {
     max-width: 100%;
-    font-size: 0.88rem;
+    font-size: 0.84rem;
+    padding: 8px 10px;
+    border-radius: 14px;
   }
 
   .messages-page-shell .thread-panel .form-grid {
-    padding: 8px 10px 10px;
-    gap: 6px;
+    padding: 5px 8px 7px;
+    gap: 4px;
   }
 
   .messages-page-shell .thread-panel #messageInput {
-    min-height: 44px;
-    max-height: 76px;
-    font-size: 0.9rem;
+    min-height: 36px;
+    max-height: 56px;
+    font-size: 0.84rem;
+    padding: 7px 9px;
   }
 
   .messages-page-shell .field-row {
     flex-direction: row;
     align-items: center;
     justify-content: space-between;
+    gap: 8px;
   }
 
   .messages-page-shell .field-row .status-message {
@@ -1119,6 +1135,22 @@ button,
 
   .messages-page-shell .field-row button {
     flex-shrink: 0;
+    padding: 8px 12px;
+  }
+
+  .messages-page-shell .thread-panel .section-title {
+    font-size: 0.9rem;
+  }
+
+  .messages-page-shell .thread-panel .section-subtitle {
+    font-size: 0.72rem;
+    margin-top: 2px;
+  }
+
+  .messages-page-shell .avatar-lg,
+  .messages-page-shell .avatar-placeholder.avatar-lg {
+    width: 42px;
+    height: 42px;
   }
 
   .thread-header {

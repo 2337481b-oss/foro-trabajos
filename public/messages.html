@@ -33,8 +33,8 @@
       </div>
     </header>
 
-    <main class="messages-layout">
-      <aside class="panel sidebar-card">
+    <main class="messages-layout" id="messagesLayout">
+      <aside class="panel sidebar-card" id="conversationSidebar">
         <div class="counter-row">
           <h2 class="section-subtitle">Chats</h2>
           <button class="button-secondary" type="button" onclick="loadConversations()">Actualizar</button>
@@ -46,6 +46,15 @@
 
       <section class="panel thread-panel">
         <div class="thread-header" id="threadHeader">
+          <button
+            class="button-secondary"
+            type="button"
+            id="backToChatsBtn"
+            onclick="showConversationList()"
+            style="display:none;"
+          >
+            Volver
+          </button>
           <div>
             <h2 class="section-title">Selecciona un chat</h2>
             <p class="section-subtitle">Abre una conversacion desde una publicacion o continua una ya iniciada.</p>
@@ -91,6 +100,9 @@
     const userChip = document.getElementById("userChip");
     const menuShell = document.getElementById("menuShell");
     const messagesBadge = document.getElementById("messagesBadge");
+    const messagesLayout = document.getElementById("messagesLayout");
+    const conversationSidebar = document.getElementById("conversationSidebar");
+    const backToChatsBtn = document.getElementById("backToChatsBtn");
 
     const query = new URLSearchParams(window.location.search);
     let selectedUserId = query.get("userId") || "";
@@ -111,6 +123,37 @@
 
     function closeMobileNav() {
       menuShell.classList.remove("mobile-open");
+    }
+
+    function showConversationList() {
+      if (window.innerWidth <= 720) {
+        messagesLayout.classList.remove("mobile-thread-open");
+        conversationSidebar.style.display = "";
+        backToChatsBtn.style.display = "none";
+      }
+    }
+
+    function showThreadPanel() {
+      if (window.innerWidth <= 720) {
+        messagesLayout.classList.add("mobile-thread-open");
+        conversationSidebar.style.display = "none";
+        backToChatsBtn.style.display = "inline-flex";
+      }
+    }
+
+    function syncMobileChatLayout() {
+      if (window.innerWidth > 720) {
+        messagesLayout.classList.remove("mobile-thread-open");
+        conversationSidebar.style.display = "";
+        backToChatsBtn.style.display = "none";
+        return;
+      }
+
+      if (selectedUserId) {
+        showThreadPanel();
+      } else {
+        showConversationList();
+      }
     }
 
     function logout() {
@@ -303,6 +346,7 @@
       }
 
       selectedUserId = userId;
+      showThreadPanel();
       query.set("userId", userId);
       if (selectedPostId) {
         query.set("postId", selectedPostId);
@@ -314,7 +358,16 @@
 
     async function loadThread(silent = false) {
       if (!selectedUserId) {
+        showConversationList();
         threadHeader.innerHTML = `
+          <button
+            class="button-secondary"
+            type="button"
+            onclick="showConversationList()"
+            style="display:none;"
+          >
+            Volver
+          </button>
           <div>
             <h2 class="section-title">Selecciona una conversacion</h2>
             <p class="section-subtitle">Tambien puedes llegar aqui desde el boton de mensaje en una publicacion.</p>
@@ -351,8 +404,17 @@
 
         const data = await response.json();
         selectedPartner = data.partner;
+        showThreadPanel();
 
         threadHeader.innerHTML = `
+          <button
+            class="button-secondary"
+            type="button"
+            onclick="showConversationList()"
+            style="${window.innerWidth <= 720 ? "display:inline-flex;" : "display:none;"}"
+          >
+            Volver
+          </button>
           ${renderAvatar(data.partner, "avatar-lg")}
           <div>
             <h2 class="section-title">${escapeHtml(data.partner.username)}</h2>
@@ -395,6 +457,14 @@
         }
       } catch (error) {
         threadHeader.innerHTML = `
+          <button
+            class="button-secondary"
+            type="button"
+            onclick="showConversationList()"
+            style="${window.innerWidth <= 720 ? "display:inline-flex;" : "display:none;"}"
+          >
+            Volver
+          </button>
           <div>
             <h2 class="section-title">No fue posible abrir la conversacion</h2>
             <p class="section-subtitle">${escapeHtml(
@@ -473,6 +543,8 @@
       await preloadPosts();
       await loadConversations();
       await loadThread();
+      syncMobileChatLayout();
+      window.addEventListener("resize", syncMobileChatLayout);
       document.addEventListener("click", (event) => {
         if (!menuShell.contains(event.target)) {
           closeMobileNav();
