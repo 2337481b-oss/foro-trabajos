@@ -659,13 +659,13 @@ button,
 
 .messages-layout {
   display: grid;
-  grid-template-columns: 320px minmax(0, 1fr);
-  gap: 24px;
+  grid-template-columns: 280px minmax(0, 1fr);
+  gap: 18px;
   align-items: stretch;
 }
 
 .messages-layout .sidebar-card {
-  max-height: 78vh;
+  max-height: 84vh;
   display: grid;
   grid-template-rows: auto minmax(0, 1fr);
   overflow: hidden;
@@ -764,8 +764,8 @@ button,
 }
 
 .thread-panel {
-  min-height: 78vh;
-  max-height: 78vh;
+  min-height: 84vh;
+  max-height: 84vh;
   display: grid;
   grid-template-rows: auto 1fr auto;
   overflow: hidden;
@@ -781,15 +781,15 @@ button,
   display: flex;
   align-items: center;
   gap: 14px;
-  padding: 18px 18px 16px;
+  padding: 16px 18px 14px;
   border-bottom: 1px solid rgba(168, 85, 247, 0.18);
   background: rgba(255, 255, 255, 0.03);
 }
 
 .message-list {
   display: grid;
-  gap: 12px;
-  padding: 20px 18px;
+  gap: 10px;
+  padding: 16px 20px;
   align-content: start;
   overflow-y: auto;
   background-image:
@@ -798,10 +798,10 @@ button,
 }
 
 .message-bubble {
-  max-width: min(78%, 540px);
-  padding: 14px 16px;
+  max-width: min(82%, 620px);
+  padding: 12px 14px;
   border-radius: 22px;
-  line-height: 1.55;
+  line-height: 1.45;
   border: 1px solid rgba(168, 85, 247, 0.12);
 }
 
@@ -838,17 +838,18 @@ button,
   position: sticky;
   bottom: 0;
   z-index: 2;
-  gap: 10px;
+  gap: 8px;
   margin: 0;
-  padding: 16px 18px 18px;
+  padding: 12px 16px 14px;
   border-top: 1px solid rgba(168, 85, 247, 0.18);
   background: rgba(7, 5, 12, 0.92);
   box-shadow: 0 -10px 24px rgba(0, 0, 0, 0.22);
 }
 
 .thread-panel #messageInput {
-  min-height: 88px;
-  border-radius: 22px;
+  min-height: 64px;
+  max-height: 120px;
+  border-radius: 20px;
   background: rgba(255, 255, 255, 0.06);
 }
 
