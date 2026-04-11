@@ -43,7 +43,7 @@
           </div>
           <div class="hero-stats">
             <div class="stat-pill">
-              <strong id="profileEmail">-</strong>
+              <strong><a id="profileEmailLink" href="#">-</a></strong>
               <span class="helper-text">correo</span>
             </div>
             <div class="stat-pill">
@@ -183,7 +183,14 @@
 
         document.getElementById("profileName").textContent = user.username || "Usuario";
         document.getElementById("profileBio").textContent = user.bio || "Este usuario aun no agrego una descripcion.";
-        document.getElementById("profileEmail").textContent = user.email || "-";
+        const emailLink = document.getElementById("profileEmailLink");
+        if (user.email) {
+          emailLink.textContent = user.email;
+          emailLink.href = `mailto:${user.email}`;
+        } else {
+          emailLink.textContent = "-";
+          emailLink.removeAttribute("href");
+        }
         document.getElementById("profilePostCount").textContent = posts.length;
         document.getElementById("messageButton").href =
           String(user._id) === String(currentUserId)
