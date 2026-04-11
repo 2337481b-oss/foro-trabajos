@@ -32,6 +32,7 @@ body {
   min-height: 100vh;
   font-family: "Segoe UI", "Trebuchet MS", sans-serif;
   color: var(--text);
+  font-size: 15px;
   background:
     radial-gradient(circle at top left, rgba(168, 85, 247, 0.22), transparent 26%),
     radial-gradient(circle at top right, rgba(236, 72, 153, 0.16), transparent 22%),
@@ -55,9 +56,9 @@ img {
 }
 
 .page-shell {
-  max-width: 1180px;
+  max-width: 1080px;
   margin: 0 auto;
-  padding: 24px 20px 40px;
+  padding: 18px 16px 28px;
 }
 
 .topbar {
@@ -222,11 +223,11 @@ img {
 
 .container,
 .panel {
-  padding: 24px;
+  padding: 18px;
 }
 
 .card {
-  padding: 20px;
+  padding: 16px;
 }
 
 .section-title,
@@ -235,13 +236,14 @@ img {
 }
 
 .section-title {
-  font-size: clamp(1.6rem, 3vw, 2.2rem);
+  font-size: clamp(1.3rem, 2.4vw, 1.8rem);
 }
 
 .section-subtitle {
   margin-top: 8px;
   color: var(--muted);
-  line-height: 1.5;
+  line-height: 1.4;
+  font-size: 0.92rem;
 }
 
 .panel-stack,
@@ -252,7 +254,7 @@ img {
 }
 
 .hero-panel {
-  padding: 26px;
+  padding: 20px;
   background:
     linear-gradient(145deg, rgba(139, 92, 246, 0.16), rgba(236, 72, 153, 0.08)),
     linear-gradient(180deg, rgba(27, 18, 43, 0.96), rgba(15, 10, 26, 0.96));
@@ -295,8 +297,8 @@ img {
 
 .form-grid {
   display: grid;
-  gap: 16px;
-  margin-top: 22px;
+  gap: 12px;
+  margin-top: 18px;
 }
 
 .field-group {
@@ -326,9 +328,9 @@ input,
 textarea,
 select {
   width: 100%;
-  padding: 14px 16px;
+  padding: 11px 13px;
   border: 1px solid rgba(168, 85, 247, 0.18);
-  border-radius: 16px;
+  border-radius: 14px;
   background: rgba(255, 255, 255, 0.05);
   color: var(--text);
   transition: border-color 0.2s ease, box-shadow 0.2s ease, transform 0.2s ease;
@@ -374,7 +376,7 @@ button,
   gap: 8px;
   border: none;
   border-radius: 999px;
-  padding: 12px 18px;
+  padding: 10px 15px;
   cursor: pointer;
   text-decoration: none;
   transition: transform 0.2s ease, box-shadow 0.2s ease, background 0.2s ease, color 0.2s ease;
@@ -455,7 +457,7 @@ button,
 
 .post-head,
 .post-foot {
-  padding: 18px 20px;
+  padding: 14px 16px;
 }
 
 .post-head {
@@ -495,16 +497,17 @@ button,
 }
 
 .post-copy {
-  padding: 0 20px 18px;
+  padding: 0 16px 14px;
 }
 
 .post-copy h3 {
-  font-size: 1.3rem;
-  margin-bottom: 10px;
+  font-size: 1.08rem;
+  margin-bottom: 8px;
 }
 
 .post-copy p {
-  line-height: 1.65;
+  line-height: 1.5;
+  font-size: 0.92rem;
 }
 
 .post-foot {
@@ -519,7 +522,7 @@ button,
 
 .action-button {
   flex: 1;
-  min-width: 140px;
+  min-width: 120px;
   background: rgba(255, 255, 255, 0.05);
   color: var(--text);
   border: 1px solid rgba(168, 85, 247, 0.14);
@@ -667,8 +670,8 @@ button,
 
 .messages-layout {
   display: grid;
-  grid-template-columns: 250px minmax(0, 1fr);
-  gap: 14px;
+  grid-template-columns: 230px minmax(0, 1fr);
+  gap: 12px;
   align-items: stretch;
 }
 
@@ -677,11 +680,13 @@ button,
   display: grid;
   grid-template-rows: auto minmax(0, 1fr);
   overflow: hidden;
+  min-width: 0;
 }
 
 .messages-layout .conversation-list {
   min-height: 0;
   overflow-y: auto;
+  overflow-x: hidden;
   padding-right: 4px;
 }
 
@@ -777,6 +782,7 @@ button,
   display: grid;
   grid-template-rows: auto 1fr auto;
   overflow: hidden;
+  min-width: 0;
   background:
     radial-gradient(circle at top, rgba(168, 85, 247, 0.08), transparent 24%),
     linear-gradient(180deg, rgba(19, 13, 31, 0.98), rgba(11, 8, 19, 0.98));
@@ -789,7 +795,7 @@ button,
   display: flex;
   align-items: center;
   gap: 12px;
-  padding: 12px 14px 10px;
+  padding: 10px 12px 8px;
   border-bottom: 1px solid rgba(168, 85, 247, 0.18);
   background: rgba(255, 255, 255, 0.03);
 }
@@ -797,9 +803,11 @@ button,
 .message-list {
   display: grid;
   gap: 8px;
-  padding: 12px 14px;
+  padding: 10px 12px;
   align-content: start;
   overflow-y: auto;
+  overflow-x: hidden;
+  min-width: 0;
   background-image:
     radial-gradient(rgba(168, 85, 247, 0.08) 1px, transparent 1px);
   background-size: 18px 18px;
@@ -812,6 +820,10 @@ button,
   line-height: 1.35;
   font-size: 0.92rem;
   border: 1px solid rgba(168, 85, 247, 0.12);
+  overflow-wrap: anywhere;
+  word-break: break-word;
+  white-space: pre-wrap;
+  min-width: 0;
 }
 
 .message-bubble.own {
@@ -849,30 +861,30 @@ button,
   z-index: 2;
   gap: 8px;
   margin: 0;
-  padding: 10px 12px 12px;
+  padding: 8px 10px 10px;
   border-top: 1px solid rgba(168, 85, 247, 0.18);
   background: rgba(7, 5, 12, 0.92);
   box-shadow: 0 -10px 24px rgba(0, 0, 0, 0.22);
 }
 
 .thread-panel #messageInput {
-  min-height: 64px;
-  max-height: 104px;
-  border-radius: 20px;
+  min-height: 54px;
+  max-height: 92px;
+  border-radius: 16px;
   background: rgba(255, 255, 255, 0.06);
-  padding: 10px 12px;
+  padding: 9px 11px;
 }
 
 .thread-panel .section-title {
-  font-size: 1.15rem;
+  font-size: 1rem;
 }
 
 .thread-panel .section-subtitle {
-  font-size: 0.85rem;
+  font-size: 0.8rem;
 }
 
 .messages-layout .sidebar-card .section-subtitle {
-  font-size: 0.95rem;
+  font-size: 0.9rem;
 }
 
 .file-preview {
