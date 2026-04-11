@@ -603,6 +603,7 @@ button,
   min-width: 0;
   font-size: 0.9rem;
   justify-self: start;
+  text-align: left;
 }
 
 .comment strong {
