@@ -869,7 +869,7 @@ button,
 }
 
 .message-bubble {
-  max-width: min(82%, 620px);
+  max-width: min(72%, 540px);
   padding: 10px 12px;
   border-radius: 18px;
   line-height: 1.35;
@@ -900,7 +900,7 @@ button,
 }
 
 .messages-page-shell .message-bubble {
-  max-width: min(88%, 860px);
+  max-width: min(78%, 640px);
 }
 
 .messages-page-shell .thread-panel .form-grid {
