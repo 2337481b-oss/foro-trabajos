@@ -523,7 +523,9 @@
     refreshMessagesBadge();
     postsRefreshInterval = window.setInterval(() => {
       const focusedId = document.activeElement?.id || "";
-      if (!focusedId.startsWith("input-")) {
+      const shouldRefreshFeed = !focusedId.startsWith("input-") && openComments.size === 0;
+
+      if (shouldRefreshFeed) {
         loadPosts(false);
       }
       openComments.forEach((postId) => loadComments(postId));

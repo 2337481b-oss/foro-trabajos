@@ -610,11 +610,17 @@ button,
   justify-content: flex-start;
   border-radius: 18px;
   padding: 14px;
+  background: rgba(255, 255, 255, 0.04);
+  text-align: left;
 }
 
 .conversation-list .active {
   background: rgba(139, 92, 246, 0.14);
   border: 1px solid rgba(168, 85, 247, 0.28);
+}
+
+.conversation-list button:hover {
+  background: rgba(255, 255, 255, 0.08);
 }
 
 .conversation-preview {
@@ -632,6 +638,7 @@ button,
   display: grid;
   grid-template-columns: 320px minmax(0, 1fr);
   gap: 24px;
+  align-items: stretch;
 }
 
 .profile-layout {
@@ -710,25 +717,33 @@ button,
 }
 
 .thread-panel {
-  min-height: 72vh;
+  min-height: 78vh;
   display: grid;
   grid-template-rows: auto 1fr auto;
+  overflow: hidden;
+  background:
+    radial-gradient(circle at top, rgba(168, 85, 247, 0.08), transparent 24%),
+    linear-gradient(180deg, rgba(19, 13, 31, 0.98), rgba(11, 8, 19, 0.98));
 }
 
 .thread-header {
   display: flex;
   align-items: center;
   gap: 14px;
-  padding-bottom: 16px;
+  padding: 18px 18px 16px;
   border-bottom: 1px solid rgba(168, 85, 247, 0.18);
+  background: rgba(255, 255, 255, 0.03);
 }
 
 .message-list {
   display: grid;
   gap: 12px;
-  padding: 20px 0;
+  padding: 20px 18px;
   align-content: start;
   overflow-y: auto;
+  background-image:
+    radial-gradient(rgba(168, 85, 247, 0.08) 1px, transparent 1px);
+  background-size: 18px 18px;
 }
 
 .message-bubble {
@@ -743,10 +758,12 @@ button,
   margin-left: auto;
   background: linear-gradient(135deg, var(--primary) 0%, var(--accent) 100%);
   color: white;
+  border-bottom-right-radius: 8px;
 }
 
 .message-bubble.other {
   background: rgba(255, 255, 255, 0.06);
+  border-bottom-left-radius: 8px;
 }
 
 .message-meta {
@@ -764,6 +781,20 @@ button,
   background: rgba(139, 92, 246, 0.16);
   color: inherit;
   font-size: 0.78rem;
+}
+
+.thread-panel .form-grid {
+  gap: 10px;
+  margin: 0;
+  padding: 16px 18px 18px;
+  border-top: 1px solid rgba(168, 85, 247, 0.18);
+  background: rgba(7, 5, 12, 0.92);
+}
+
+.thread-panel #messageInput {
+  min-height: 88px;
+  border-radius: 22px;
+  background: rgba(255, 255, 255, 0.06);
 }
 
 .file-preview {
