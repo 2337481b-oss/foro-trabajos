@@ -584,6 +584,9 @@ button,
 }
 
 .comment {
+  display: inline-block;
+  width: fit-content;
+  max-width: 100%;
   padding: 9px 11px;
   border-radius: 14px;
   background: rgba(255, 255, 255, 0.04);
@@ -593,6 +596,7 @@ button,
   white-space: pre-wrap;
   min-width: 0;
   font-size: 0.9rem;
+  justify-self: start;
 }
 
 .comment strong {
