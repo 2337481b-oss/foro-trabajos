@@ -675,6 +675,21 @@ button,
   align-items: stretch;
 }
 
+.messages-page-shell {
+  max-width: 1380px;
+  padding-left: 10px;
+  padding-right: 10px;
+}
+
+.messages-page-shell .topbar {
+  margin-bottom: 14px;
+}
+
+.messages-page-shell .messages-layout {
+  grid-template-columns: 210px minmax(0, 1fr);
+  gap: 10px;
+}
+
 .messages-layout .sidebar-card {
   max-height: 84vh;
   display: grid;
@@ -824,6 +839,37 @@ button,
   word-break: break-word;
   white-space: pre-wrap;
   min-width: 0;
+}
+
+.messages-page-shell .thread-panel {
+  min-height: 88vh;
+  max-height: 88vh;
+}
+
+.messages-page-shell .messages-layout .sidebar-card {
+  max-height: 88vh;
+}
+
+.messages-page-shell .thread-header {
+  padding: 8px 10px 6px;
+}
+
+.messages-page-shell .message-list {
+  gap: 7px;
+  padding: 8px 10px;
+}
+
+.messages-page-shell .message-bubble {
+  max-width: min(88%, 860px);
+}
+
+.messages-page-shell .thread-panel .form-grid {
+  padding: 6px 8px 8px;
+}
+
+.messages-page-shell .thread-panel #messageInput {
+  min-height: 46px;
+  max-height: 76px;
 }
 
 .message-bubble.own {
