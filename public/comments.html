@@ -15,18 +15,23 @@
 
   <div class="page-shell fade-in">
     <header class="navbar">
-      <div class="brand">
-        <div class="brand-mark">FT</div>
-        <div class="brand-copy">
-          <h1>Comentarios de la publicacion</h1>
-          <p>Revisa la conversacion y contacta al autor por privado si hace falta.</p>
+      <div class="nav-header-mobile">
+        <div class="brand">
+          <div class="brand-mark">FT</div>
+          <div class="brand-copy">
+            <h1>Comentarios de la publicacion</h1>
+            <p>Revisa la conversacion y contacta al autor por privado si hace falta.</p>
+          </div>
         </div>
+
+        <button class="button-secondary nav-toggle" type="button" onclick="toggleMobileNav()">Menu</button>
       </div>
 
       <nav class="nav-links">
         <span class="user-chip" id="userChip"></span>
         <a class="nav-link" href="index.html">Inicio</a>
         <a class="nav-link" href="messages.html">Mensajes</a>
+        <a class="nav-link" href="profile.html">Perfil</a>
         <button class="button-secondary" type="button" onclick="logout()">Cerrar sesion</button>
       </nav>
     </header>
@@ -63,6 +68,13 @@
     </main>
   </div>
 
+  <div class="modal" id="imageModal" onclick="closeImageModal(event)">
+    <div class="modal-content">
+      <button class="button-secondary modal-close" type="button" onclick="closeImageModal()">Cerrar</button>
+      <img class="modal-image" id="modalImage" alt="Vista completa">
+    </div>
+  </div>
+
   <script>
     const API_BASE =
       window.location.protocol === "file:"
@@ -76,8 +88,31 @@
     const commentsContainer = document.getElementById("comments");
     const userChip = document.getElementById("userChip");
     const messageAuthorLink = document.getElementById("messageAuthorLink");
+    const navbar = document.querySelector(".navbar");
+    const imageModal = document.getElementById("imageModal");
+    const modalImage = document.getElementById("modalImage");
+    let commentsInterval = null;
 
     userChip.textContent = localStorage.getItem("username") || "Usuario";
+
+    function toggleMobileNav() {
+      navbar.classList.toggle("mobile-open");
+    }
+
+    function openImageModal(src, title) {
+      modalImage.src = decodeURIComponent(src);
+      modalImage.alt = decodeURIComponent(title || "Vista completa");
+      imageModal.classList.add("active");
+    }
+
+    function closeImageModal(event) {
+      if (event && event.target && event.target !== imageModal) {
+        return;
+      }
+
+      imageModal.classList.remove("active");
+      modalImage.src = "";
+    }
 
     function logout() {
       localStorage.clear();
@@ -157,7 +192,13 @@
             </div>
           </div>
 
-          ${post.media ? `<img class="post-image" src="${post.media}" alt="Imagen de ${escapeHtml(post.title)}">` : ""}
+          ${
+            post.media
+              ? `<img class="post-image" src="${post.media}" alt="Imagen de ${escapeHtml(
+                  post.title
+                )}" onclick="openImageModal('${encodeURIComponent(post.media)}', '${encodeURIComponent(post.title)}')">`
+              : ""
+          }
 
           <div class="post-copy">
             <h3>${escapeHtml(post.title)}</h3>
@@ -234,6 +275,15 @@
 
     loadPost();
     loadComments();
+    document.addEventListener("keydown", (event) => {
+      if (event.key === "Escape") {
+        closeImageModal();
+      }
+    });
+    commentsInterval = window.setInterval(() => {
+      loadPost();
+      loadComments();
+    }, 10000);
   </script>
 </body>
 </html>

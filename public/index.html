@@ -15,12 +15,16 @@
 
   <div class="page-shell fade-in">
     <header class="navbar">
-      <div class="brand">
-        <div class="brand-mark">FT</div>
-        <div class="brand-copy">
-          <h1>Foro de Trabajos</h1>
-          <p>Comparte ideas, recibe comentarios y conecta en privado.</p>
+      <div class="nav-header-mobile">
+        <div class="brand">
+          <div class="brand-mark">FT</div>
+          <div class="brand-copy">
+            <h1>Foro de Trabajos</h1>
+            <p>Comparte ideas, recibe comentarios y conecta en privado.</p>
+          </div>
         </div>
+
+        <button class="button-secondary nav-toggle" type="button" onclick="toggleMobileNav()">Menu</button>
       </div>
 
       <nav class="nav-links">
@@ -28,6 +32,7 @@
         <a class="nav-link active" href="index.html">Inicio</a>
         <a class="nav-link" href="post.html">Publicar</a>
         <a class="nav-link" href="messages.html">Mensajes</a>
+        <a class="nav-link" href="profile.html">Perfil</a>
         <button class="button-secondary" type="button" onclick="logout()">Cerrar sesion</button>
       </nav>
     </header>
@@ -70,6 +75,13 @@
     </main>
   </div>
 
+  <div class="modal" id="imageModal" onclick="closeImageModal(event)">
+    <div class="modal-content">
+      <button class="button-secondary modal-close" type="button" onclick="closeImageModal()">Cerrar</button>
+      <img class="modal-image" id="modalImage" alt="Vista completa">
+    </div>
+  </div>
+
   <script>
     const API_BASE =
       window.location.protocol === "file:"
@@ -82,8 +94,32 @@
     const postsContainer = document.getElementById("posts");
     const postCount = document.getElementById("postCount");
     const userChip = document.getElementById("userChip");
+    const navbar = document.querySelector(".navbar");
+    const imageModal = document.getElementById("imageModal");
+    const modalImage = document.getElementById("modalImage");
+    const openComments = new Set();
+    let postsRefreshInterval = null;
 
     userChip.textContent = currentUsername;
+
+    function toggleMobileNav() {
+      navbar.classList.toggle("mobile-open");
+    }
+
+    function openImageModal(src, title) {
+      modalImage.src = decodeURIComponent(src);
+      modalImage.alt = decodeURIComponent(title || "Vista completa");
+      imageModal.classList.add("active");
+    }
+
+    function closeImageModal(event) {
+      if (event && event.target && event.target !== imageModal) {
+        return;
+      }
+
+      imageModal.classList.remove("active");
+      modalImage.src = "";
+    }
 
     function logout() {
       localStorage.clear();
@@ -134,8 +170,12 @@
       )}</div>`;
     }
 
-    async function loadPosts() {
-      postsContainer.innerHTML = '<section class="panel empty-state">Cargando publicaciones...</section>';
+    async function loadPosts(showLoader = true) {
+      const previouslyOpen = new Set(openComments);
+
+      if (showLoader) {
+        postsContainer.innerHTML = '<section class="panel empty-state">Cargando publicaciones...</section>';
+      }
 
       try {
         const response = await fetch(`${API_BASE}/posts`, {
@@ -159,6 +199,16 @@
         }
 
         postsContainer.innerHTML = posts.map((post) => renderPost(post)).join("");
+        openComments.clear();
+
+        previouslyOpen.forEach((postId) => {
+          const wrapper = document.getElementById(`comments-${postId}`);
+          if (wrapper) {
+            wrapper.classList.add("active");
+            openComments.add(postId);
+            loadComments(postId);
+          }
+        });
       } catch (error) {
         postsContainer.innerHTML = `
           <section class="panel empty-state">
@@ -185,7 +235,13 @@
             ${isOwnPost ? '<span class="helper-text">Tu publicacion</span>' : '<span class="helper-text">Disponible para contacto</span>'}
           </div>
 
-          ${post.media ? `<img class="post-image" src="${post.media}" alt="Imagen de ${escapeHtml(post.title)}">` : ""}
+          ${
+            post.media
+              ? `<img class="post-image" src="${post.media}" alt="Imagen de ${escapeHtml(
+                  post.title
+                )}" onclick="openImageModal('${encodeURIComponent(post.media)}', '${encodeURIComponent(post.title)}')">`
+              : ""
+          }
 
           <div class="post-copy">
             <h3>${escapeHtml(post.title)}</h3>
@@ -289,7 +345,10 @@
       wrapper.classList.toggle("active");
 
       if (wrapper.classList.contains("active")) {
+        openComments.add(postId);
         await loadComments(postId);
+      } else {
+        openComments.delete(postId);
       }
     }
 
@@ -359,7 +418,17 @@
       }
     }
 
+    document.addEventListener("keydown", (event) => {
+      if (event.key === "Escape") {
+        closeImageModal();
+      }
+    });
+
     loadPosts();
+    postsRefreshInterval = window.setInterval(() => {
+      loadPosts(false);
+      openComments.forEach((postId) => loadComments(postId));
+    }, 10000);
   </script>
 </body>
 </html>

@@ -15,12 +15,16 @@
 
   <div class="page-shell fade-in">
     <header class="navbar">
-      <div class="brand">
-        <div class="brand-mark">FT</div>
-        <div class="brand-copy">
-          <h1>Crear publicacion</h1>
-          <p>Comparte una oportunidad, proyecto o duda con mejor presentacion.</p>
+      <div class="nav-header-mobile">
+        <div class="brand">
+          <div class="brand-mark">FT</div>
+          <div class="brand-copy">
+            <h1>Crear publicacion</h1>
+            <p>Comparte una oportunidad, proyecto o duda con mejor presentacion.</p>
+          </div>
         </div>
+
+        <button class="button-secondary nav-toggle" type="button" onclick="toggleMobileNav()">Menu</button>
       </div>
 
       <nav class="nav-links">
@@ -28,6 +32,7 @@
         <a class="nav-link" href="index.html">Inicio</a>
         <a class="nav-link active" href="post.html">Publicar</a>
         <a class="nav-link" href="messages.html">Mensajes</a>
+        <a class="nav-link" href="profile.html">Perfil</a>
         <button class="button-secondary" type="button" onclick="logout()">Cerrar sesion</button>
       </nav>
     </header>
@@ -104,8 +109,13 @@
     const removeBtn = document.getElementById("removeBtn");
     const publishBtn = document.getElementById("publishBtn");
     const status = document.getElementById("status");
+    const navbar = document.querySelector(".navbar");
 
     document.getElementById("userChip").textContent = currentUsername;
+
+    function toggleMobileNav() {
+      navbar.classList.toggle("mobile-open");
+    }
 
     function logout() {
       localStorage.clear();

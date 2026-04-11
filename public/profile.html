@@ -1,0 +1,261 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Mi perfil</title>
+  <link rel="stylesheet" href="css/styles.css">
+</head>
+<body>
+  <script>
+    if (!localStorage.getItem("token") || !localStorage.getItem("userId")) {
+      window.location.href = "login.html";
+    }
+  </script>
+
+  <div class="page-shell fade-in">
+    <header class="navbar">
+      <div class="nav-header-mobile">
+        <div class="brand">
+          <div class="brand-mark">FT</div>
+          <div class="brand-copy">
+            <h1>Perfil</h1>
+            <p>Edita tu informacion personal y tu foto.</p>
+          </div>
+        </div>
+
+        <button class="button-secondary nav-toggle" type="button" onclick="toggleMobileNav()">Menu</button>
+      </div>
+
+      <nav class="nav-links">
+        <span class="user-chip" id="userChip"></span>
+        <a class="nav-link" href="index.html">Inicio</a>
+        <a class="nav-link" href="post.html">Publicar</a>
+        <a class="nav-link" href="messages.html">Mensajes</a>
+        <a class="nav-link active" href="profile.html">Perfil</a>
+        <button class="button-secondary" type="button" onclick="logout()">Cerrar sesion</button>
+      </nav>
+    </header>
+
+    <main class="profile-layout">
+      <aside class="panel profile-hero">
+        <div class="profile-summary">
+          <div class="profile-avatar-wrap" id="profileAvatar"></div>
+          <div>
+            <h2 class="section-title" id="profileName">Cargando perfil...</h2>
+            <p class="section-subtitle" id="profileBioPreview">Tu presentacion aparecerá aqui.</p>
+          </div>
+          <div class="hero-stats">
+            <div class="stat-pill">
+              <strong id="profilePostCount">0</strong>
+              <span class="helper-text">publicaciones</span>
+            </div>
+            <div class="stat-pill">
+              <strong id="profileEmail">-</strong>
+              <span class="helper-text">correo</span>
+            </div>
+          </div>
+        </div>
+      </aside>
+
+      <section class="panel">
+        <h2 class="section-title">Editar informacion</h2>
+        <p class="section-subtitle">Actualiza tu nombre visible, una bio corta y tu avatar profesional.</p>
+
+        <div class="form-grid">
+          <div class="field-group">
+            <label class="field-label" for="username">Nombre de usuario</label>
+            <input id="username" maxlength="30" placeholder="Tu nombre visible">
+          </div>
+
+          <div class="field-group">
+            <label class="field-label" for="bio">Bio</label>
+            <textarea id="bio" maxlength="160" placeholder="Describe tu perfil, intereses o area de trabajo."></textarea>
+            <span class="small-counter" id="bioCount">0 / 160</span>
+          </div>
+
+          <div class="field-group">
+            <label class="field-label" for="avatarInput">Foto de perfil</label>
+            <input id="avatarInput" type="file" accept="image/*">
+            <span class="helper-text">Puedes subir una nueva foto y guardarla por separado.</span>
+          </div>
+
+          <div class="profile-actions">
+            <button type="button" onclick="saveProfile()" id="saveBtn">Guardar cambios</button>
+            <button class="button-secondary" type="button" onclick="uploadAvatar()" id="avatarBtn">Actualizar foto</button>
+          </div>
+
+          <p class="status-message" id="status" aria-live="polite"></p>
+        </div>
+      </section>
+    </main>
+  </div>
+
+  <script>
+    const API_BASE =
+      window.location.protocol === "file:"
+        ? "https://foro-trabajos.onrender.com"
+        : window.location.origin;
+    const token = localStorage.getItem("token");
+    const currentUserId = localStorage.getItem("userId");
+    const navbar = document.querySelector(".navbar");
+    const status = document.getElementById("status");
+    const bioInput = document.getElementById("bio");
+    const avatarContainer = document.getElementById("profileAvatar");
+
+    document.getElementById("userChip").textContent = localStorage.getItem("username") || "Usuario";
+
+    function toggleMobileNav() {
+      navbar.classList.toggle("mobile-open");
+    }
+
+    function logout() {
+      localStorage.clear();
+      window.location.href = "login.html";
+    }
+
+    function authHeaders(extra = {}) {
+      return {
+        ...extra,
+        Authorization: `Bearer ${token}`,
+      };
+    }
+
+    function showStatus(message, variant) {
+      status.textContent = message;
+      status.className = `status-message ${variant}`;
+    }
+
+    function renderAvatar(user) {
+      if (user?.avatar) {
+        avatarContainer.innerHTML = `<img class="avatar-lg" src="${user.avatar}" alt="Avatar de ${user.username}">`;
+        return;
+      }
+
+      const initials = String(user?.username || "U")
+        .split(" ")
+        .filter(Boolean)
+        .slice(0, 2)
+        .map((part) => part[0].toUpperCase())
+        .join("");
+
+      avatarContainer.innerHTML = `<div class="avatar-placeholder avatar-lg">${initials}</div>`;
+    }
+
+    function updateBioCounter() {
+      document.getElementById("bioCount").textContent = `${bioInput.value.length} / 160`;
+    }
+
+    async function loadProfile() {
+      try {
+        const [userResponse, postsResponse] = await Promise.all([
+          fetch(`${API_BASE}/user/${currentUserId}`, {
+            headers: authHeaders(),
+          }),
+          fetch(`${API_BASE}/posts/user/${currentUserId}`, {
+            headers: authHeaders(),
+          }),
+        ]);
+
+        if (!userResponse.ok) {
+          throw new Error("No se pudo cargar tu perfil");
+        }
+
+        const user = await userResponse.json();
+        const posts = postsResponse.ok ? await postsResponse.json() : [];
+
+        document.getElementById("username").value = user.username || "";
+        document.getElementById("bio").value = user.bio || "";
+        document.getElementById("profileName").textContent = user.username || "Usuario";
+        document.getElementById("profileBioPreview").textContent =
+          user.bio || "Agrega una bio para presentarte mejor.";
+        document.getElementById("profilePostCount").textContent = posts.length;
+        document.getElementById("profileEmail").textContent = user.email || "-";
+        renderAvatar(user);
+        localStorage.setItem("username", user.username || "Usuario");
+        document.getElementById("userChip").textContent = user.username || "Usuario";
+        updateBioCounter();
+      } catch (error) {
+        showStatus(error.message || "No se pudo cargar el perfil.", "status-error");
+      }
+    }
+
+    async function saveProfile() {
+      const username = document.getElementById("username").value.trim();
+      const bio = document.getElementById("bio").value.trim();
+      const saveBtn = document.getElementById("saveBtn");
+
+      if (!username) {
+        showStatus("El nombre de usuario no puede quedar vacio.", "status-error");
+        return;
+      }
+
+      saveBtn.disabled = true;
+      saveBtn.textContent = "Guardando...";
+
+      try {
+        const response = await fetch(`${API_BASE}/user/${currentUserId}`, {
+          method: "PUT",
+          headers: authHeaders({
+            "Content-Type": "application/json",
+          }),
+          body: JSON.stringify({ username, bio }),
+        });
+
+        if (!response.ok) {
+          throw new Error(await response.text());
+        }
+
+        localStorage.setItem("username", username);
+        showStatus("Perfil actualizado correctamente.", "status-success");
+        await loadProfile();
+      } catch (error) {
+        showStatus(error.message || "No se pudo actualizar el perfil.", "status-error");
+      }
+
+      saveBtn.disabled = false;
+      saveBtn.textContent = "Guardar cambios";
+    }
+
+    async function uploadAvatar() {
+      const avatarBtn = document.getElementById("avatarBtn");
+      const input = document.getElementById("avatarInput");
+
+      if (!input.files[0]) {
+        showStatus("Selecciona una imagen primero.", "status-error");
+        return;
+      }
+
+      avatarBtn.disabled = true;
+      avatarBtn.textContent = "Subiendo...";
+
+      try {
+        const formData = new FormData();
+        formData.append("avatar", input.files[0]);
+
+        const response = await fetch(`${API_BASE}/upload-avatar`, {
+          method: "POST",
+          headers: authHeaders(),
+          body: formData,
+        });
+
+        if (!response.ok) {
+          throw new Error(await response.text());
+        }
+
+        input.value = "";
+        showStatus("Foto de perfil actualizada.", "status-success");
+        await loadProfile();
+      } catch (error) {
+        showStatus(error.message || "No se pudo subir la foto.", "status-error");
+      }
+
+      avatarBtn.disabled = false;
+      avatarBtn.textContent = "Actualizar foto";
+    }
+
+    bioInput.addEventListener("input", updateBioCounter);
+    loadProfile();
+  </script>
+</body>
+</html>
