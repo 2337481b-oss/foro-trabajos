@@ -14,21 +14,23 @@
   </script>
 
   <div class="page-shell fade-in">
-    <header class="navbar">
+    <header class="topbar">
       <div class="brand">
         <h1 class="brand-title">UniEmpleos</h1>
       </div>
 
-      <button class="button-secondary nav-toggle" type="button" onclick="toggleMobileNav()">Menu</button>
+      <div class="menu-shell" id="menuShell">
+        <button class="button-secondary nav-toggle" type="button" onclick="toggleMobileNav()">Menu</button>
 
-      <nav class="nav-links">
-        <span class="user-chip" id="userChip"></span>
-        <a class="nav-link" href="index.html" onclick="closeMobileNav()"><span class="nav-link-row">Inicio</span></a>
-        <a class="nav-link" href="post.html" onclick="closeMobileNav()"><span class="nav-link-row">Publicar</span></a>
-        <a class="nav-link" href="messages.html" onclick="closeMobileNav()"><span class="nav-link-row">Mensajes <span class="nav-badge" id="messagesBadge"></span></span></a>
-        <a class="nav-link active" href="profile.html" onclick="closeMobileNav()"><span class="nav-link-row">Perfil</span></a>
-        <button class="button-secondary" type="button" onclick="logout()">Cerrar sesion</button>
-      </nav>
+        <nav class="nav-links">
+          <span class="user-chip" id="userChip"></span>
+          <a class="nav-link" href="index.html" onclick="closeMobileNav()"><span class="nav-link-row">Inicio</span></a>
+          <a class="nav-link" href="post.html" onclick="closeMobileNav()"><span class="nav-link-row">Publicar</span></a>
+          <a class="nav-link" href="messages.html" onclick="closeMobileNav()"><span class="nav-link-row">Mensajes <span class="nav-badge" id="messagesBadge"></span></span></a>
+          <a class="nav-link active" href="profile.html" onclick="closeMobileNav()"><span class="nav-link-row">Perfil</span></a>
+          <button class="button-secondary" type="button" onclick="logout()">Cerrar sesion</button>
+        </nav>
+      </div>
     </header>
 
     <main class="profile-layout">
@@ -92,7 +94,7 @@
         : window.location.origin;
     const token = localStorage.getItem("token");
     const currentUserId = localStorage.getItem("userId");
-    const navbar = document.querySelector(".navbar");
+    const menuShell = document.getElementById("menuShell");
     const messagesBadge = document.getElementById("messagesBadge");
     const status = document.getElementById("status");
     const bioInput = document.getElementById("bio");
@@ -101,11 +103,11 @@
     document.getElementById("userChip").textContent = localStorage.getItem("username") || "Usuario";
 
     function toggleMobileNav() {
-      navbar.classList.toggle("mobile-open");
+      menuShell.classList.toggle("mobile-open");
     }
 
     function closeMobileNav() {
-      navbar.classList.remove("mobile-open");
+      menuShell.classList.remove("mobile-open");
     }
 
     function logout() {

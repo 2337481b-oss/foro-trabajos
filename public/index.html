@@ -14,21 +14,23 @@
   </script>
 
   <div class="page-shell fade-in">
-    <header class="navbar">
+    <header class="topbar">
       <div class="brand">
         <h1 class="brand-title">UniEmpleos</h1>
       </div>
 
-      <button class="button-secondary nav-toggle" type="button" onclick="toggleMobileNav()">Menu</button>
+      <div class="menu-shell" id="menuShell">
+        <button class="button-secondary nav-toggle" type="button" onclick="toggleMobileNav()">Menu</button>
 
-      <nav class="nav-links">
-        <span class="user-chip" id="userChip">Tu perfil</span>
-        <a class="nav-link active" href="index.html" onclick="closeMobileNav()"><span class="nav-link-row">Inicio</span></a>
-        <a class="nav-link" href="post.html" onclick="closeMobileNav()"><span class="nav-link-row">Publicar</span></a>
-        <a class="nav-link" href="messages.html" onclick="closeMobileNav()"><span class="nav-link-row">Mensajes <span class="nav-badge" id="messagesBadge"></span></span></a>
-        <a class="nav-link" href="profile.html" onclick="closeMobileNav()"><span class="nav-link-row">Perfil</span></a>
-        <button class="button-secondary" type="button" onclick="logout()">Cerrar sesion</button>
-      </nav>
+        <nav class="nav-links">
+          <span class="user-chip" id="userChip">Tu perfil</span>
+          <a class="nav-link active" href="index.html" onclick="closeMobileNav()"><span class="nav-link-row">Inicio</span></a>
+          <a class="nav-link" href="post.html" onclick="closeMobileNav()"><span class="nav-link-row">Publicar</span></a>
+          <a class="nav-link" href="messages.html" onclick="closeMobileNav()"><span class="nav-link-row">Mensajes <span class="nav-badge" id="messagesBadge"></span></span></a>
+          <a class="nav-link" href="profile.html" onclick="closeMobileNav()"><span class="nav-link-row">Perfil</span></a>
+          <button class="button-secondary" type="button" onclick="logout()">Cerrar sesion</button>
+        </nav>
+      </div>
     </header>
 
     <main class="layout-grid">
@@ -88,7 +90,7 @@
     const postsContainer = document.getElementById("posts");
     const postCount = document.getElementById("postCount");
     const userChip = document.getElementById("userChip");
-    const navbar = document.querySelector(".navbar");
+    const menuShell = document.getElementById("menuShell");
     const messagesBadge = document.getElementById("messagesBadge");
     const imageModal = document.getElementById("imageModal");
     const modalImage = document.getElementById("modalImage");
@@ -99,11 +101,11 @@
     userChip.textContent = currentUsername;
 
     function toggleMobileNav() {
-      navbar.classList.toggle("mobile-open");
+      menuShell.classList.toggle("mobile-open");
     }
 
     function closeMobileNav() {
-      navbar.classList.remove("mobile-open");
+      menuShell.classList.remove("mobile-open");
     }
 
     function openImageModal(src, title) {
@@ -211,6 +213,11 @@
 
     async function loadPosts(showLoader = true) {
       const previouslyOpen = new Set(openComments);
+      const activeInput = document.activeElement;
+      const activeInputId = activeInput?.id || "";
+      const activeSelectionStart = typeof activeInput?.selectionStart === "number" ? activeInput.selectionStart : null;
+      const activeSelectionEnd = typeof activeInput?.selectionEnd === "number" ? activeInput.selectionEnd : null;
+      const activePostId = activeInputId.startsWith("input-") ? activeInputId.replace("input-", "") : "";
 
       if (showLoader) {
         postsContainer.innerHTML = '<section class="panel empty-state">Cargando publicaciones...</section>';
@@ -253,6 +260,16 @@
             input.value = commentDrafts.get(postId);
           }
         });
+
+        if (activePostId) {
+          const restoredInput = document.getElementById(`input-${activePostId}`);
+          if (restoredInput) {
+            restoredInput.focus();
+            if (activeSelectionStart !== null && activeSelectionEnd !== null) {
+              restoredInput.setSelectionRange(activeSelectionStart, activeSelectionEnd);
+            }
+          }
+        }
       } catch (error) {
         postsContainer.innerHTML = `
           <section class="panel empty-state">
@@ -479,7 +496,10 @@
     loadPosts();
     refreshMessagesBadge();
     postsRefreshInterval = window.setInterval(() => {
-      loadPosts(false);
+      const focusedId = document.activeElement?.id || "";
+      if (!focusedId.startsWith("input-")) {
+        loadPosts(false);
+      }
       openComments.forEach((postId) => loadComments(postId));
       refreshMessagesBadge();
     }, 10000);
