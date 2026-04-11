@@ -641,11 +641,51 @@ button,
   margin: 4px 0 0;
 }
 
+.conversation-meta {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin-top: 6px;
+}
+
+.conversation-unread {
+  width: 10px;
+  height: 10px;
+  border-radius: 50%;
+  background: linear-gradient(135deg, var(--accent) 0%, var(--primary-strong) 100%);
+  box-shadow: 0 0 0 4px rgba(236, 72, 153, 0.12);
+  flex-shrink: 0;
+}
+
 .messages-layout {
   display: grid;
   grid-template-columns: 320px minmax(0, 1fr);
   gap: 24px;
   align-items: stretch;
+}
+
+.messages-layout .sidebar-card {
+  max-height: 78vh;
+  display: grid;
+  grid-template-rows: auto minmax(0, 1fr);
+  overflow: hidden;
+}
+
+.messages-layout .conversation-list {
+  min-height: 0;
+  overflow-y: auto;
+  padding-right: 6px;
+}
+
+.messages-layout .conversation-list::-webkit-scrollbar,
+.message-list::-webkit-scrollbar {
+  width: 8px;
+}
+
+.messages-layout .conversation-list::-webkit-scrollbar-thumb,
+.message-list::-webkit-scrollbar-thumb {
+  background: rgba(168, 85, 247, 0.28);
+  border-radius: 999px;
 }
 
 .profile-layout {
@@ -725,6 +765,7 @@ button,
 
 .thread-panel {
   min-height: 78vh;
+  max-height: 78vh;
   display: grid;
   grid-template-rows: auto 1fr auto;
   overflow: hidden;
@@ -734,6 +775,9 @@ button,
 }
 
 .thread-header {
+  position: sticky;
+  top: 0;
+  z-index: 2;
   display: flex;
   align-items: center;
   gap: 14px;
@@ -791,11 +835,15 @@ button,
 }
 
 .thread-panel .form-grid {
+  position: sticky;
+  bottom: 0;
+  z-index: 2;
   gap: 10px;
   margin: 0;
   padding: 16px 18px 18px;
   border-top: 1px solid rgba(168, 85, 247, 0.18);
   background: rgba(7, 5, 12, 0.92);
+  box-shadow: 0 -10px 24px rgba(0, 0, 0, 0.22);
 }
 
 .thread-panel #messageInput {

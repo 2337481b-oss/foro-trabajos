@@ -143,6 +143,19 @@
       });
     }
 
+    function isUnreadConversation(conversation) {
+      const latest = conversation?.latestMessage;
+      const lastSeenAt = localStorage.getItem("messagesLastSeenAt");
+      const lastSeenTime = lastSeenAt ? new Date(lastSeenAt).getTime() : 0;
+
+      return Boolean(
+        latest &&
+          latest.from !== currentUserId &&
+          latest.createdAt &&
+          new Date(latest.createdAt).getTime() > lastSeenTime
+      );
+    }
+
     function isNearBottom(element) {
       return element.scrollHeight - element.scrollTop - element.clientHeight < 80;
     }
@@ -258,8 +271,10 @@
       }
 
       conversationList.innerHTML = items
-        .map(
-          (item) => `
+        .map((item) => {
+          const unread = isUnreadConversation(item);
+
+          return `
             <button
               type="button"
               class="button-secondary ${item.partner?._id === selectedUserId ? "active" : ""}"
@@ -270,12 +285,15 @@
                 <div>
                   <strong>${escapeHtml(item.partner?.username || "Usuario")}</strong>
                   <p class="muted-text">${escapeHtml(item.latestMessage?.content || "Sin mensajes aun")}</p>
-                  <span class="small-counter">${escapeHtml(formatDate(item.latestMessage?.createdAt))}</span>
+                  <div class="conversation-meta">
+                    <span class="small-counter">${escapeHtml(formatDate(item.latestMessage?.createdAt))}</span>
+                    ${unread ? '<span class="conversation-unread" title="Mensaje no leido"></span>' : ""}
+                  </div>
                 </div>
               </div>
             </button>
-          `
-        )
+          `;
+        })
         .join("");
     }
 
