@@ -893,12 +893,12 @@ button,
 }
 
 .messages-page-shell .thread-panel {
-  min-height: 88vh;
-  max-height: 88vh;
+  min-height: 50vh;
+  max-height: 50vh;
 }
 
 .messages-page-shell .messages-layout .sidebar-card {
-  max-height: 88vh;
+  max-height: 50vh;
 }
 
 .messages-page-shell .thread-header {
