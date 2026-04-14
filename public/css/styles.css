@@ -881,8 +881,8 @@ button,
   width: fit-content;
   max-width: fit-content;
   padding: 6px 1px;
-  border-radius: 18px;
-  line-height: 1.35;
+  border-radius: 12px;
+  line-height: 1.2;
   font-size: 0.85rem;
   border: 1px solid rgba(168, 85, 247, 0.12);
   overflow-wrap: anywhere;
