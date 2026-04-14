@@ -879,11 +879,11 @@ button,
 .message-bubble {
   display: inline-block;
   width: fit-content;
-  max-width: min(66%, 460px);
-  padding: 10px 12px;
+  max-width: fit-content;
+  padding: 6px 1px;
   border-radius: 18px;
   line-height: 1.35;
-  font-size: 0.92rem;
+  font-size: 0.85rem;
   border: 1px solid rgba(168, 85, 247, 0.12);
   overflow-wrap: anywhere;
   word-break: break-word;
