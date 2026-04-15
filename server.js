@@ -43,6 +43,9 @@ const userSchema = new Schema(
     password: { type: String, required: true },
     avatar: { type: String, default: "" },
     bio: { type: String, default: "" },
+    resumeUrl: { type: String, default: "" },
+    resumeType: { type: String, default: "" },
+    resumeName: { type: String, default: "" },
   },
   { timestamps: true }
 );
@@ -99,23 +102,50 @@ const upload = multer({
   },
 });
 
+const uploadResume = multer({
+  storage: multer.memoryStorage(),
+  limits: {
+    fileSize: 8 * 1024 * 1024,
+  },
+});
+
 function getTokenFromRequest(req) {
   const authHeader = req.headers.authorization || "";
   return authHeader.startsWith("Bearer ") ? authHeader.slice(7) : authHeader;
 }
 
-function serializeUser(user) {
+function serializeUser(user, options = {}) {
   if (!user) {
     return null;
   }
 
-  return {
+  const serializedUser = {
     _id: String(user._id),
     username: user.username,
     email: user.email,
     avatar: user.avatar || "",
     bio: user.bio || "",
   };
+
+  if (options.includePrivate) {
+    serializedUser.resumeUrl = user.resumeUrl || "";
+    serializedUser.resumeType = user.resumeType || "";
+    serializedUser.resumeName = user.resumeName || "";
+  }
+
+  return serializedUser;
+}
+
+async function uploadResumeToCloudinary(file) {
+  const dataUri = `data:${file.mimetype};base64,${file.buffer.toString("base64")}`;
+
+  return cloudinary.uploader.upload(dataUri, {
+    folder: "foro-trabajos-resumes",
+    resource_type: "auto",
+    use_filename: true,
+    unique_filename: true,
+    filename_override: path.parse(file.originalname).name,
+  });
 }
 
 function sanitizeText(value, maxLength) {
@@ -300,7 +330,19 @@ app.get("/user/:id", async (req, res) => {
       return res.status(404).send("Usuario no encontrado");
     }
 
-    res.json(serializeUser(user));
+    let includePrivate = false;
+    const token = getTokenFromRequest(req);
+
+    if (token) {
+      try {
+        const decoded = jwt.verify(token, JWT_SECRET);
+        includePrivate = String(decoded.id) === String(user._id);
+      } catch (error) {
+        includePrivate = false;
+      }
+    }
+
+    res.json(serializeUser(user, { includePrivate }));
   } catch (error) {
     res.status(500).send("Error al obtener usuario");
   }
@@ -339,6 +381,43 @@ app.post("/upload-avatar", auth, upload.single("avatar"), async (req, res) => {
     res.send("Avatar actualizado");
   } catch (error) {
     res.status(500).send("Error al subir avatar");
+  }
+});
+
+app.post("/upload-resume", auth, uploadResume.single("resume"), async (req, res) => {
+  try {
+    if (!req.file) {
+      return res.status(400).send("No hay archivo");
+    }
+
+    const allowedMimeTypes = [
+      "application/pdf",
+      "image/jpeg",
+      "image/png",
+      "image/webp",
+      "application/msword",
+      "application/vnd.openxmlformats-officedocument.wordprocessingml.document",
+    ];
+
+    if (!allowedMimeTypes.includes(req.file.mimetype)) {
+      return res.status(400).send("Formato de curriculum no permitido");
+    }
+
+    const uploadedResume = await uploadResumeToCloudinary(req.file);
+
+    await User.findByIdAndUpdate(req.user._id, {
+      resumeUrl: uploadedResume.secure_url || uploadedResume.url,
+      resumeType: req.file.mimetype,
+      resumeName: req.file.originalname,
+    });
+
+    res.json({
+      resumeUrl: uploadedResume.secure_url || uploadedResume.url,
+      resumeType: req.file.mimetype,
+      resumeName: req.file.originalname,
+    });
+  } catch (error) {
+    res.status(500).send("Error al subir curriculum");
   }
 });
 

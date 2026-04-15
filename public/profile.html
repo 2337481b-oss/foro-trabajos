@@ -76,9 +76,26 @@
             <span class="helper-text">Puedes subir una nueva foto y guardarla por separado.</span>
           </div>
 
+          <div class="field-group">
+            <label class="field-label" for="resumeInput">Curriculum</label>
+            <input
+              id="resumeInput"
+              type="file"
+              accept=".pdf,.doc,.docx,image/*"
+            >
+            <span class="helper-text">Sube tu CV como PDF, Word o imagen. Solo se vera aqui en tu perfil.</span>
+          </div>
+
+          <div class="panel" id="resumeCard" style="display:none;">
+            <h3 class="field-label">Vista previa del curriculum</h3>
+            <p class="helper-text" id="resumeName">Aun no has subido un curriculum.</p>
+            <div class="file-preview" id="resumePreview"></div>
+          </div>
+
           <div class="profile-actions">
             <button type="button" onclick="saveProfile()" id="saveBtn">Guardar cambios</button>
             <button class="button-secondary" type="button" onclick="uploadAvatar()" id="avatarBtn">Actualizar foto</button>
+            <button class="button-secondary" type="button" onclick="uploadResume()" id="resumeBtn">Subir curriculum</button>
           </div>
 
           <p class="status-message" id="status" aria-live="polite"></p>
@@ -99,6 +116,9 @@
     const status = document.getElementById("status");
     const bioInput = document.getElementById("bio");
     const avatarContainer = document.getElementById("profileAvatar");
+    const resumeCard = document.getElementById("resumeCard");
+    const resumeName = document.getElementById("resumeName");
+    const resumePreview = document.getElementById("resumePreview");
 
     document.getElementById("userChip").textContent = localStorage.getItem("username") || "Usuario";
 
@@ -176,6 +196,38 @@
       avatarContainer.innerHTML = `<div class="avatar-placeholder avatar-lg">${initials}</div>`;
     }
 
+    function renderResume(user) {
+      if (!user?.resumeUrl) {
+        resumeCard.style.display = "none";
+        resumePreview.innerHTML = "";
+        return;
+      }
+
+      resumeCard.style.display = "block";
+      resumeName.textContent = user.resumeName || "Curriculum cargado";
+
+      if (String(user.resumeType || "").startsWith("image/")) {
+        resumePreview.innerHTML = `<img src="${user.resumeUrl}" alt="Vista previa del curriculum" style="width:100%;">`;
+        return;
+      }
+
+      if (user.resumeType === "application/pdf") {
+        resumePreview.innerHTML = `
+          <iframe
+            src="${user.resumeUrl}"
+            title="Curriculum PDF"
+            style="width:100%; height:480px; border:0; border-radius:14px;"
+          ></iframe>
+          <p style="margin-top:10px;"><a class="toggle-link" href="${user.resumeUrl}" target="_blank" rel="noopener noreferrer">Abrir curriculum en otra pestaña</a></p>
+        `;
+        return;
+      }
+
+      resumePreview.innerHTML = `
+        <p><a class="toggle-link" href="${user.resumeUrl}" target="_blank" rel="noopener noreferrer">Abrir o descargar ${user.resumeName || "curriculum"}</a></p>
+      `;
+    }
+
     function updateBioCounter() {
       document.getElementById("bioCount").textContent = `${bioInput.value.length} / 160`;
     }
@@ -206,6 +258,7 @@
         document.getElementById("profilePostCount").textContent = posts.length;
         document.getElementById("profileEmail").textContent = user.email || "-";
         renderAvatar(user);
+        renderResume(user);
         localStorage.setItem("username", user.username || "Usuario");
         document.getElementById("userChip").textContent = user.username || "Usuario";
         updateBioCounter();
@@ -286,6 +339,43 @@
 
       avatarBtn.disabled = false;
       avatarBtn.textContent = "Actualizar foto";
+    }
+
+    async function uploadResume() {
+      const resumeBtn = document.getElementById("resumeBtn");
+      const input = document.getElementById("resumeInput");
+
+      if (!input.files[0]) {
+        showStatus("Selecciona un archivo de curriculum primero.", "status-error");
+        return;
+      }
+
+      resumeBtn.disabled = true;
+      resumeBtn.textContent = "Subiendo CV...";
+
+      try {
+        const formData = new FormData();
+        formData.append("resume", input.files[0]);
+
+        const response = await fetch(`${API_BASE}/upload-resume`, {
+          method: "POST",
+          headers: authHeaders(),
+          body: formData,
+        });
+
+        if (!response.ok) {
+          throw new Error(await response.text());
+        }
+
+        input.value = "";
+        showStatus("Curriculum actualizado correctamente.", "status-success");
+        await loadProfile();
+      } catch (error) {
+        showStatus(error.message || "No se pudo subir el curriculum.", "status-error");
+      }
+
+      resumeBtn.disabled = false;
+      resumeBtn.textContent = "Subir curriculum";
     }
 
     bioInput.addEventListener("input", updateBioCounter);
