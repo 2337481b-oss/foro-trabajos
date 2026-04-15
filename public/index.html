@@ -96,7 +96,20 @@
     const commentDrafts = new Map();
     let postsRefreshInterval = null;
 
-    userChip.textContent = currentUsername;
+    function renderTag(tag) {
+      return tag ? `<span class="tag-badge">${escapeHtml(tag)}</span>` : "";
+    }
+
+    function setUserChip(username, tag = "") {
+      userChip.innerHTML = `
+        <span class="user-chip-text">
+          <span>${escapeHtml(username || "Usuario")}</span>
+          ${renderTag(tag)}
+        </span>
+      `;
+    }
+
+    setUserChip(currentUsername, localStorage.getItem("userTag") || "");
 
     function toggleMobileNav() {
       menuShell.classList.toggle("mobile-open");
@@ -301,7 +314,10 @@
               ${renderAvatar(author)}
               <a class="author-link" href="user.html?userId=${encodeURIComponent(author._id || post.userId)}">
                 <div>
-                  <h3>${escapeHtml(author.username)}</h3>
+                  <div class="meta-inline">
+                    <h3>${escapeHtml(author.username)}</h3>
+                    ${renderTag(author.tag || "")}
+                  </div>
                   <p class="timestamp">${escapeHtml(formatDate(post.createdAt))}</p>
                 </div>
               </a>

@@ -111,7 +111,20 @@
     let postsMap = new Map();
     let messagesInterval = null;
 
-    userChip.textContent = currentUsername;
+    function renderTag(tag) {
+      return tag ? `<span class="tag-badge">${escapeHtml(tag)}</span>` : "";
+    }
+
+    function setUserChip(username, tag = "") {
+      userChip.innerHTML = `
+        <span class="user-chip-text">
+          <span>${escapeHtml(username || "Usuario")}</span>
+          ${renderTag(tag)}
+        </span>
+      `;
+    }
+
+    setUserChip(currentUsername, localStorage.getItem("userTag") || "");
 
     function toggleMobileNav() {
       menuShell.classList.toggle("mobile-open");
@@ -326,7 +339,10 @@
               <div class="conversation-preview">
                 ${renderAvatar(item.partner)}
                 <div>
-                  <strong>${escapeHtml(item.partner?.username || "Usuario")}</strong>
+                  <div class="meta-inline">
+                    <strong>${escapeHtml(item.partner?.username || "Usuario")}</strong>
+                    ${renderTag(item.partner?.tag || "")}
+                  </div>
                   <p class="muted-text">${escapeHtml(item.latestMessage?.content || "Sin mensajes aun")}</p>
                   <div class="conversation-meta">
                     <span class="small-counter">${escapeHtml(formatDate(item.latestMessage?.createdAt))}</span>
@@ -417,7 +433,12 @@
           </button>
           ${renderAvatar(data.partner, "avatar-lg")}
           <div>
-            <h2 class="section-title">${escapeHtml(data.partner.username)}</h2>
+            <h2 class="section-title">
+              <span class="meta-inline">
+                <span>${escapeHtml(data.partner.username)}</span>
+                ${renderTag(data.partner.tag || "")}
+              </span>
+            </h2>
             <p class="section-subtitle">${escapeHtml(data.partner.bio || "Conversacion privada tipo networking profesional.")}</p>
           </div>
         `;

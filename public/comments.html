@@ -92,7 +92,12 @@
     let commentsInterval = null;
     let commentDraft = "";
 
-    userChip.textContent = localStorage.getItem("username") || "Usuario";
+    userChip.innerHTML = `
+      <span class="user-chip-text">
+        <span>${localStorage.getItem("username") || "Usuario"}</span>
+        ${localStorage.getItem("userTag") ? `<span class="tag-badge">${localStorage.getItem("userTag")}</span>` : ""}
+      </span>
+    `;
 
     function toggleMobileNav() {
       menuShell.classList.toggle("mobile-open");

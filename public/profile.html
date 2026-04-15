@@ -71,6 +71,16 @@
           </div>
 
           <div class="field-group">
+            <label class="field-label" for="tag">Etiqueta de perfil</label>
+            <select id="tag">
+              <option value="">Sin etiqueta</option>
+              <option value="Empresa">Empresa</option>
+              <option value="Estudiante">Estudiante</option>
+              <option value="Indie">Indie</option>
+            </select>
+          </div>
+
+          <div class="field-group">
             <label class="field-label" for="avatarInput">Foto de perfil</label>
             <input id="avatarInput" type="file" accept="image/*">
             <span class="helper-text">Puedes subir una nueva foto y guardarla por separado.</span>
@@ -120,7 +130,20 @@
     const resumeName = document.getElementById("resumeName");
     const resumePreview = document.getElementById("resumePreview");
 
-    document.getElementById("userChip").textContent = localStorage.getItem("username") || "Usuario";
+    function renderTag(tag) {
+      return tag ? `<span class="tag-badge">${tag}</span>` : "";
+    }
+
+    function setUserChip(username, tag = "") {
+      document.getElementById("userChip").innerHTML = `
+        <span class="user-chip-text">
+          <span>${username || "Usuario"}</span>
+          ${renderTag(tag)}
+        </span>
+      `;
+    }
+
+    setUserChip(localStorage.getItem("username") || "Usuario", localStorage.getItem("userTag") || "");
 
     function toggleMobileNav() {
       menuShell.classList.toggle("mobile-open");
@@ -252,15 +275,21 @@
 
         document.getElementById("username").value = user.username || "";
         document.getElementById("bio").value = user.bio || "";
+        document.getElementById("tag").value = user.tag || "";
         document.getElementById("profileName").textContent = user.username || "Usuario";
-        document.getElementById("profileBioPreview").textContent =
-          user.bio || "Agrega una bio para presentarte mejor.";
+        document.getElementById("profileBioPreview").innerHTML = `
+          <span class="meta-inline">
+            ${renderTag(user.tag || "")}
+            <span>${user.bio || "Agrega una bio para presentarte mejor."}</span>
+          </span>
+        `;
         document.getElementById("profilePostCount").textContent = posts.length;
         document.getElementById("profileEmail").textContent = user.email || "-";
         renderAvatar(user);
         renderResume(user);
         localStorage.setItem("username", user.username || "Usuario");
-        document.getElementById("userChip").textContent = user.username || "Usuario";
+        localStorage.setItem("userTag", user.tag || "");
+        setUserChip(user.username || "Usuario", user.tag || "");
         updateBioCounter();
       } catch (error) {
         showStatus(error.message || "No se pudo cargar el perfil.", "status-error");
@@ -270,6 +299,7 @@
     async function saveProfile() {
       const username = document.getElementById("username").value.trim();
       const bio = document.getElementById("bio").value.trim();
+      const tag = document.getElementById("tag").value;
       const saveBtn = document.getElementById("saveBtn");
 
       if (!username) {
@@ -286,7 +316,7 @@
           headers: authHeaders({
             "Content-Type": "application/json",
           }),
-          body: JSON.stringify({ username, bio }),
+          body: JSON.stringify({ username, bio, tag }),
         });
 
         if (!response.ok) {
@@ -294,6 +324,7 @@
         }
 
         localStorage.setItem("username", username);
+        localStorage.setItem("userTag", tag || "");
         showStatus("Perfil actualizado correctamente.", "status-success");
         await loadProfile();
       } catch (error) {

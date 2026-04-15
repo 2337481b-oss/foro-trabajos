@@ -111,6 +111,10 @@
         .replace(/'/g, "&#39;");
     }
 
+    function renderTag(tag) {
+      return tag ? `<span class="tag-badge">${escapeHtml(tag)}</span>` : "";
+    }
+
     function renderAvatar(user) {
       const container = document.getElementById("profileAvatar");
 
@@ -181,7 +185,12 @@
         const user = await userResponse.json();
         const posts = postsResponse.ok ? await postsResponse.json() : [];
 
-        document.getElementById("profileName").textContent = user.username || "Usuario";
+        document.getElementById("profileName").innerHTML = `
+          <span class="meta-inline">
+            <span>${escapeHtml(user.username || "Usuario")}</span>
+            ${renderTag(user.tag || "")}
+          </span>
+        `;
         document.getElementById("profileBio").textContent = user.bio || "Este usuario aun no agrego una descripcion.";
         const emailLink = document.getElementById("profileEmailLink");
         if (user.email) {

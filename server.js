@@ -43,6 +43,7 @@ const userSchema = new Schema(
     password: { type: String, required: true },
     avatar: { type: String, default: "" },
     bio: { type: String, default: "" },
+    tag: { type: String, enum: ["Empresa", "Estudiante", "Indie", ""], default: "" },
     resumeUrl: { type: String, default: "" },
     resumeType: { type: String, default: "" },
     resumeName: { type: String, default: "" },
@@ -125,6 +126,7 @@ function serializeUser(user, options = {}) {
     email: user.email,
     avatar: user.avatar || "",
     bio: user.bio || "",
+    tag: user.tag || "",
   };
 
   if (options.includePrivate) {
@@ -192,7 +194,7 @@ async function buildPostsResponse(posts, currentUserId = "") {
 
   const [authors, commentCounts] = await Promise.all([
     validAuthorIds.length
-      ? User.find({ _id: { $in: validAuthorIds } }).select("username avatar").lean()
+      ? User.find({ _id: { $in: validAuthorIds } }).select("username avatar tag").lean()
       : Promise.resolve([]),
     Comment.aggregate([
       { $match: { postId: { $in: postIds } } },
@@ -224,11 +226,13 @@ async function buildPostsResponse(posts, currentUserId = "") {
             _id: String(author._id),
             username: author.username,
             avatar: author.avatar || "",
+            tag: author.tag || "",
           }
         : {
             _id: String(post.userId),
             username: "Usuario",
             avatar: "",
+            tag: "",
           },
     };
   });
@@ -356,10 +360,13 @@ app.put("/user/:id", auth, async (req, res) => {
 
     const username = sanitizeText(req.body.username, 30);
     const bio = sanitizeText(req.body.bio, 160);
+    const allowedTags = new Set(["Empresa", "Estudiante", "Indie", ""]);
+    const tag = allowedTags.has(String(req.body.tag || "")) ? String(req.body.tag || "") : "";
 
     await User.findByIdAndUpdate(req.params.id, {
       username: username || req.user.username,
       bio,
+      tag,
     });
 
     res.send("Perfil actualizado");

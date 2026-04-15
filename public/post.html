@@ -108,7 +108,16 @@
     const menuShell = document.getElementById("menuShell");
     const messagesBadge = document.getElementById("messagesBadge");
 
-    document.getElementById("userChip").textContent = currentUsername;
+    function setUserChip(username, tag = "") {
+      document.getElementById("userChip").innerHTML = `
+        <span class="user-chip-text">
+          <span>${username || "Usuario"}</span>
+          ${tag ? `<span class="tag-badge">${tag}</span>` : ""}
+        </span>
+      `;
+    }
+
+    setUserChip(currentUsername, localStorage.getItem("userTag") || "");
 
     function toggleMobileNav() {
       menuShell.classList.toggle("mobile-open");

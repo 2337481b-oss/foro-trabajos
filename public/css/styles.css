@@ -168,6 +168,13 @@ img {
   border: 1px solid var(--line);
 }
 
+.user-chip-text {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  flex-wrap: wrap;
+}
+
 .author-link {
   color: inherit;
   text-decoration: none;
@@ -176,6 +183,28 @@ img {
 .author-link:hover h3,
 .author-link:hover p {
   color: #ffffff;
+}
+
+.tag-badge {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  padding: 4px 8px;
+  border-radius: 999px;
+  background: rgba(139, 92, 246, 0.14);
+  border: 1px solid rgba(168, 85, 247, 0.22);
+  color: #e9dcff;
+  font-size: 0.72rem;
+  font-weight: 700;
+  line-height: 1;
+  white-space: nowrap;
+}
+
+.meta-inline {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  flex-wrap: wrap;
 }
 
 .avatar,
