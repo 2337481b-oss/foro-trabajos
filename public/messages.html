@@ -43,6 +43,15 @@
         <div class="conversation-list list-clean" id="conversationList">
           <div class="empty-state">Cargando conversaciones...</div>
         </div>
+        <div class="push-card" id="pushCard">
+          <div>
+            <strong>Alertas de mensajes</strong>
+            <p>Recibe avisos cuando alguien te escriba, incluso fuera del chat.</p>
+          </div>
+          <button class="button-secondary push-toggle" type="button" id="pushToggleBtn" onclick="togglePushNotifications()">
+            Activar
+          </button>
+        </div>
       </aside>
 
       <section class="panel thread-panel">
@@ -101,6 +110,8 @@
     const messagesLayout = document.getElementById("messagesLayout");
     const conversationSidebar = document.getElementById("conversationSidebar");
     const backToChatsBtn = document.getElementById("backToChatsBtn");
+    const pushToggleBtn = document.getElementById("pushToggleBtn");
+    const pushCard = document.getElementById("pushCard");
 
     const query = new URLSearchParams(window.location.search);
     let selectedUserId = query.get("userId") || "";
@@ -232,6 +243,53 @@
     function showStatus(message, variant) {
       status.textContent = message;
       status.className = `status-message ${variant}`;
+    }
+
+    async function refreshPushButton() {
+      try {
+        const state = await window.UniEmpleos.getPushSubscriptionState();
+
+        if (!state.supported) {
+          pushCard.classList.add("push-disabled");
+          pushToggleBtn.textContent = "No disponible";
+          pushToggleBtn.disabled = true;
+          return;
+        }
+
+        pushCard.classList.toggle("push-active", state.subscribed);
+        pushCard.classList.remove("push-disabled");
+        pushToggleBtn.textContent = state.subscribed ? "Desactivar" : "Activar";
+        pushToggleBtn.disabled = false;
+      } catch (error) {
+        pushCard.classList.add("push-disabled");
+        pushToggleBtn.textContent = "No disponible";
+        pushToggleBtn.disabled = true;
+      }
+    }
+
+    async function togglePushNotifications() {
+      if (pushToggleBtn.disabled) {
+        return;
+      }
+
+      pushToggleBtn.disabled = true;
+      showStatus("Configurando notificaciones...", "status-info");
+
+      try {
+        const state = await window.UniEmpleos.getPushSubscriptionState();
+
+        if (state.subscribed) {
+          await window.UniEmpleos.unsubscribeFromPush();
+          showStatus("Notificaciones desactivadas.", "status-info");
+        } else {
+          await window.UniEmpleos.subscribeToPush();
+          showStatus("Notificaciones activadas para mensajes.", "status-success");
+        }
+      } catch (error) {
+        showStatus(error.message || "No se pudieron configurar las notificaciones.", "status-error");
+      }
+
+      await refreshPushButton();
     }
 
     function getPostLabel(postId) {
@@ -562,6 +620,7 @@
       await preloadPosts();
       await loadConversations();
       await loadThread();
+      await refreshPushButton();
       syncMobileChatLayout();
       window.addEventListener("resize", syncMobileChatLayout);
       document.addEventListener("click", (event) => {

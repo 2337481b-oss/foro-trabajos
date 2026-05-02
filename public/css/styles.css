@@ -758,6 +758,48 @@ button,
   flex-shrink: 0;
 }
 
+.push-card {
+  display: grid;
+  gap: 10px;
+  margin-top: 12px;
+  padding: 12px;
+  border-radius: 18px;
+  background:
+    radial-gradient(circle at top right, rgba(236, 72, 153, 0.18), transparent 38%),
+    rgba(255, 255, 255, 0.04);
+  border: 1px solid rgba(168, 85, 247, 0.18);
+}
+
+.push-card strong {
+  display: block;
+  color: #fff;
+  font-size: 0.9rem;
+}
+
+.push-card p {
+  margin: 4px 0 0;
+  color: var(--muted);
+  font-size: 0.78rem;
+  line-height: 1.35;
+}
+
+.push-card.push-active {
+  border-color: rgba(74, 222, 128, 0.34);
+  background:
+    radial-gradient(circle at top right, rgba(74, 222, 128, 0.14), transparent 38%),
+    rgba(255, 255, 255, 0.04);
+}
+
+.push-card.push-disabled {
+  opacity: 0.72;
+}
+
+.push-toggle {
+  justify-self: start;
+  padding: 7px 12px;
+  font-size: 0.82rem;
+}
+
 .messages-layout {
   display: grid;
   grid-template-columns: 230px minmax(0, 1fr);

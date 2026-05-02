@@ -1,0 +1,11 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="192" height="192" viewBox="0 0 192 192" role="img" aria-label="UniEmpleos">
+  <defs>
+    <linearGradient id="g" x1="20" y1="20" x2="172" y2="172" gradientUnits="userSpaceOnUse">
+      <stop stop-color="#8b5cf6"/>
+      <stop offset="1" stop-color="#ec4899"/>
+    </linearGradient>
+  </defs>
+  <rect width="192" height="192" rx="44" fill="#0b0713"/>
+  <circle cx="96" cy="96" r="72" fill="url(#g)" opacity=".95"/>
+  <path d="M58 58h23v47c0 15 6 23 18 23s18-8 18-23V58h23v48c0 29-16 45-41 45s-41-16-41-45V58Z" fill="#fff"/>
+</svg>

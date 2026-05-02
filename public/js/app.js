@@ -104,6 +104,98 @@
     return source;
   }
 
+  function urlBase64ToUint8Array(base64String) {
+    const padding = "=".repeat((4 - (base64String.length % 4)) % 4);
+    const base64 = (base64String + padding).replace(/-/g, "+").replace(/_/g, "/");
+    const rawData = window.atob(base64);
+    const outputArray = new Uint8Array(rawData.length);
+
+    for (let index = 0; index < rawData.length; index += 1) {
+      outputArray[index] = rawData.charCodeAt(index);
+    }
+
+    return outputArray;
+  }
+
+  async function registerServiceWorker() {
+    if (!("serviceWorker" in navigator)) {
+      throw new Error("Este navegador no soporta notificaciones web.");
+    }
+
+    return navigator.serviceWorker.register("/sw.js");
+  }
+
+  async function getPushSubscriptionState() {
+    if (!("serviceWorker" in navigator) || !("PushManager" in window)) {
+      return { supported: false, subscribed: false };
+    }
+
+    const registration = await registerServiceWorker();
+    const subscription = await registration.pushManager.getSubscription();
+
+    return {
+      supported: true,
+      subscribed: Boolean(subscription),
+      subscription,
+    };
+  }
+
+  async function subscribeToPush() {
+    if (!("Notification" in window) || !("PushManager" in window)) {
+      throw new Error("Tu navegador no permite Web Push.");
+    }
+
+    const permission = await Notification.requestPermission();
+
+    if (permission !== "granted") {
+      throw new Error("Permiso de notificaciones rechazado.");
+    }
+
+    const keyData = await apiFetch("/push/public-key", {
+      headers: authHeaders(),
+    });
+
+    if (!keyData.enabled || !keyData.publicKey) {
+      throw new Error("Faltan las llaves VAPID en el servidor.");
+    }
+
+    const registration = await registerServiceWorker();
+    const subscription =
+      (await registration.pushManager.getSubscription()) ||
+      (await registration.pushManager.subscribe({
+        userVisibleOnly: true,
+        applicationServerKey: urlBase64ToUint8Array(keyData.publicKey),
+      }));
+
+    await apiFetch("/push/subscribe", {
+      method: "POST",
+      headers: authHeaders({
+        "Content-Type": "application/json",
+      }),
+      body: JSON.stringify({ subscription }),
+    });
+
+    return subscription;
+  }
+
+  async function unsubscribeFromPush() {
+    const state = await getPushSubscriptionState();
+
+    if (!state.subscription) {
+      return;
+    }
+
+    await apiFetch("/push/subscribe", {
+      method: "DELETE",
+      headers: authHeaders({
+        "Content-Type": "application/json",
+      }),
+      body: JSON.stringify({ endpoint: state.subscription.endpoint }),
+    });
+
+    await state.subscription.unsubscribe();
+  }
+
   window.UniEmpleos = {
     API_BASE,
     apiFetch,
@@ -115,6 +207,9 @@
     normalizeList,
     renderState,
     renderTag,
+    getPushSubscriptionState,
+    subscribeToPush,
+    unsubscribeFromPush,
     setUserChip,
     token,
   };

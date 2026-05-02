@@ -10,6 +10,13 @@ const bcrypt = require("bcryptjs");
 const jwt = require("jsonwebtoken");
 const { CloudinaryStorage } = require("multer-storage-cloudinary");
 const cloudinary = require("cloudinary").v2;
+let webPush = null;
+
+try {
+  webPush = require("web-push");
+} catch (error) {
+  console.log("web-push no disponible; las notificaciones push quedan desactivadas.");
+}
 
 const app = express();
 const server = http.createServer(app);
@@ -26,8 +33,18 @@ const RESUME_MIME_TYPES = new Set([
   "application/msword",
   "application/vnd.openxmlformats-officedocument.wordprocessingml.document",
 ]);
+const VAPID_PUBLIC_KEY = process.env.VAPID_PUBLIC_KEY || "";
+const VAPID_PRIVATE_KEY = process.env.VAPID_PRIVATE_KEY || "";
 
 const realtimeClients = new Set();
+
+if (webPush && VAPID_PUBLIC_KEY && VAPID_PRIVATE_KEY) {
+  webPush.setVapidDetails(
+    process.env.VAPID_SUBJECT || "mailto:admin@uniempleos.local",
+    VAPID_PUBLIC_KEY,
+    VAPID_PRIVATE_KEY
+  );
+}
 
 app.use(express.json({ limit: "2mb" }));
 app.use(
@@ -97,16 +114,32 @@ const messageSchema = new Schema(
   { timestamps: true }
 );
 
+const pushSubscriptionSchema = new Schema(
+  {
+    userId: { type: String, required: true },
+    endpoint: { type: String, required: true, unique: true },
+    keys: {
+      p256dh: { type: String, required: true },
+      auth: { type: String, required: true },
+    },
+  },
+  { timestamps: true }
+);
+
 postSchema.index({ createdAt: -1, _id: -1 });
 postSchema.index({ userId: 1, createdAt: -1 });
 commentSchema.index({ postId: 1, createdAt: -1 });
 messageSchema.index({ from: 1, to: 1, createdAt: -1 });
 messageSchema.index({ to: 1, from: 1, createdAt: -1 });
+pushSubscriptionSchema.index({ userId: 1 });
 
 const User = mongoose.models.User || mongoose.model("User", userSchema);
 const Post = mongoose.models.Post || mongoose.model("Post", postSchema);
 const Comment = mongoose.models.Comment || mongoose.model("Comment", commentSchema);
 const Message = mongoose.models.Message || mongoose.model("Message", messageSchema);
+const PushSubscription =
+  mongoose.models.PushSubscription ||
+  mongoose.model("PushSubscription", pushSubscriptionSchema);
 
 const storage = new CloudinaryStorage({
   cloudinary,
@@ -175,6 +208,36 @@ function paginatedResponse(items, total, pagination) {
       pages: Math.ceil(total / pagination.limit),
     },
   };
+}
+
+function pushIsConfigured() {
+  return Boolean(webPush && VAPID_PUBLIC_KEY && VAPID_PRIVATE_KEY);
+}
+
+async function sendPushToUser(userId, payload) {
+  if (!pushIsConfigured()) {
+    return;
+  }
+
+  const subscriptions = await PushSubscription.find({ userId: String(userId) }).lean();
+
+  await Promise.all(
+    subscriptions.map(async (subscription) => {
+      try {
+        await webPush.sendNotification(
+          {
+            endpoint: subscription.endpoint,
+            keys: subscription.keys,
+          },
+          JSON.stringify(payload)
+        );
+      } catch (error) {
+        if (error.statusCode === 404 || error.statusCode === 410) {
+          await PushSubscription.deleteOne({ endpoint: subscription.endpoint });
+        }
+      }
+    })
+  );
 }
 
 function serializeUser(user, options = {}) {
@@ -416,6 +479,63 @@ app.get("/events", (req, res) => {
     clearInterval(keepAlive);
     realtimeClients.delete(client);
   });
+});
+
+app.get("/push/public-key", auth, (req, res) => {
+  res.json({
+    enabled: pushIsConfigured(),
+    publicKey: VAPID_PUBLIC_KEY,
+  });
+});
+
+app.post("/push/subscribe", auth, async (req, res) => {
+  try {
+    const subscription = req.body.subscription || req.body;
+
+    if (!pushIsConfigured()) {
+      return res.status(503).send("Notificaciones push no configuradas");
+    }
+
+    if (!subscription.endpoint || !subscription.keys?.p256dh || !subscription.keys?.auth) {
+      return res.status(400).send("Suscripcion push invalida");
+    }
+
+    await PushSubscription.findOneAndUpdate(
+      { endpoint: subscription.endpoint },
+      {
+        userId: String(req.user._id),
+        endpoint: subscription.endpoint,
+        keys: {
+          p256dh: subscription.keys.p256dh,
+          auth: subscription.keys.auth,
+        },
+      },
+      { upsert: true, new: true, setDefaultsOnInsert: true }
+    );
+
+    res.json({ subscribed: true });
+  } catch (error) {
+    res.status(500).send("Error al guardar notificaciones");
+  }
+});
+
+app.delete("/push/subscribe", auth, async (req, res) => {
+  try {
+    const endpoint = req.body.endpoint;
+
+    if (!endpoint) {
+      return res.status(400).send("Endpoint requerido");
+    }
+
+    await PushSubscription.deleteOne({
+      endpoint,
+      userId: String(req.user._id),
+    });
+
+    res.json({ subscribed: false });
+  } catch (error) {
+    res.status(500).send("Error al desactivar notificaciones");
+  }
 });
 
 app.get("/user/:id", async (req, res) => {
@@ -876,6 +996,14 @@ app.post("/message", auth, async (req, res) => {
 
     const responseMessage = buildMessageResponse(message.toObject(), currentUserId, usersMap);
     emitRealtime("message:created", responseMessage, [currentUserId, to]);
+    await sendPushToUser(to, {
+      title: `Nuevo mensaje de ${req.user.username}`,
+      body: content,
+      url: `/messages.html?userId=${encodeURIComponent(currentUserId)}`,
+      tag: `message-${currentUserId}`,
+      icon: "/icons/uniempleos-push.svg",
+      badge: "/icons/uniempleos-badge.svg",
+    });
     res.status(201).json(responseMessage);
   } catch (error) {
     res.status(500).send("Error al enviar mensaje");
