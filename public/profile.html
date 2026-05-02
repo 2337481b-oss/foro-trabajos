@@ -73,12 +73,58 @@
 
           <div class="field-group">
             <label class="field-label" for="tag">Etiqueta de perfil</label>
-            <select id="tag">
+            <select id="tag" onchange="updateTagRequirements()">
               <option value="">Sin etiqueta</option>
               <option value="Empresa">Empresa</option>
               <option value="Estudiante">Estudiante</option>
               <option value="Indie">Indie</option>
             </select>
+            <span class="helper-text" id="tagStatusText">Las etiquetas requieren documentacion minima.</span>
+          </div>
+
+          <div class="tag-docs-card" id="tagDocsCard" style="display:none;">
+            <h3 class="field-label" id="tagDocsTitle">Validacion de etiqueta</h3>
+            <p class="helper-text" id="tagDocsHelp"></p>
+
+            <div class="field-group tag-field tag-company">
+              <label class="field-label" for="organizationName">Nombre de empresa</label>
+              <input id="organizationName" maxlength="80" placeholder="Nombre legal o comercial">
+            </div>
+
+            <div class="field-group tag-field tag-company">
+              <label class="field-label" for="registryId">RFC o registro</label>
+              <input id="registryId" maxlength="50" placeholder="RFC, registro fiscal o identificador comercial">
+            </div>
+
+            <div class="field-group tag-field tag-company">
+              <label class="field-label" for="website">Sitio web o pagina oficial</label>
+              <input id="website" maxlength="140" placeholder="empresa.com o linkedin.com/company/...">
+            </div>
+
+            <div class="field-group tag-field tag-student">
+              <label class="field-label" for="institution">Institucion educativa</label>
+              <input id="institution" maxlength="80" placeholder="Universidad, instituto o escuela">
+            </div>
+
+            <div class="field-group tag-field tag-student">
+              <label class="field-label" for="studentId">Matricula o numero de estudiante</label>
+              <input id="studentId" maxlength="50" placeholder="Opcional si usas correo institucional">
+            </div>
+
+            <div class="field-group tag-field tag-indie">
+              <label class="field-label" for="portfolioUrl">Portafolio o proyecto</label>
+              <input id="portfolioUrl" maxlength="140" placeholder="GitHub, Behance, web personal o proyecto">
+            </div>
+
+            <div class="field-group tag-field tag-indie">
+              <label class="field-label" for="workArea">Area de trabajo</label>
+              <input id="workArea" maxlength="80" placeholder="Frontend, diseno, soporte, datos...">
+            </div>
+
+            <div class="field-group tag-field tag-company">
+              <label class="field-label" for="evidenceNote">Descripcion de actividad</label>
+              <textarea id="evidenceNote" maxlength="220" placeholder="Que hace la empresa y que tipo de oportunidades publica"></textarea>
+            </div>
           </div>
 
           <div class="field-group">
@@ -94,7 +140,7 @@
               type="file"
               accept=".pdf,.doc,.docx,image/*"
             >
-            <span class="helper-text">Sube tu CV como PDF, Word o imagen. Solo se vera aqui en tu perfil.</span>
+            <span class="helper-text">Sube tu CV como PDF, Word o imagen. Otros usuarios podran verlo desde tu perfil publico.</span>
           </div>
 
           <div class="panel" id="resumeCard" style="display:none;">
@@ -201,6 +247,60 @@
       status.className = `status-message ${variant}`;
     }
 
+    function updateTagRequirements() {
+      const tag = document.getElementById("tag").value;
+      const card = document.getElementById("tagDocsCard");
+      const title = document.getElementById("tagDocsTitle");
+      const help = document.getElementById("tagDocsHelp");
+
+      card.style.display = tag ? "grid" : "none";
+      document.querySelectorAll(".tag-field").forEach((field) => {
+        field.style.display = "none";
+      });
+
+      if (tag === "Empresa") {
+        title.textContent = "Validacion para Empresa";
+        help.textContent = "Requisitos: nombre de empresa, RFC/registro, sitio web o correo corporativo y descripcion de actividad.";
+        document.querySelectorAll(".tag-company").forEach((field) => (field.style.display = "grid"));
+      }
+
+      if (tag === "Estudiante") {
+        title.textContent = "Validacion para Estudiante";
+        help.textContent = "Requisitos: institucion educativa y matricula, o correo institucional.";
+        document.querySelectorAll(".tag-student").forEach((field) => (field.style.display = "grid"));
+      }
+
+      if (tag === "Indie") {
+        title.textContent = "Validacion para Indie";
+        help.textContent = "Requisitos: portafolio o proyecto publico y area principal de trabajo.";
+        document.querySelectorAll(".tag-indie").forEach((field) => (field.style.display = "grid"));
+      }
+    }
+
+    function fillTagDocs(docs = {}) {
+      document.getElementById("organizationName").value = docs.organizationName || "";
+      document.getElementById("registryId").value = docs.registryId || "";
+      document.getElementById("website").value = docs.website || "";
+      document.getElementById("institution").value = docs.institution || "";
+      document.getElementById("studentId").value = docs.studentId || "";
+      document.getElementById("portfolioUrl").value = docs.portfolioUrl || "";
+      document.getElementById("workArea").value = docs.workArea || "";
+      document.getElementById("evidenceNote").value = docs.evidenceNote || "";
+    }
+
+    function collectTagDocs() {
+      return {
+        organizationName: document.getElementById("organizationName").value.trim(),
+        registryId: document.getElementById("registryId").value.trim(),
+        website: document.getElementById("website").value.trim(),
+        institution: document.getElementById("institution").value.trim(),
+        studentId: document.getElementById("studentId").value.trim(),
+        portfolioUrl: document.getElementById("portfolioUrl").value.trim(),
+        workArea: document.getElementById("workArea").value.trim(),
+        evidenceNote: document.getElementById("evidenceNote").value.trim(),
+      };
+    }
+
     function renderAvatar(user) {
       if (user?.avatar) {
         avatarContainer.innerHTML = `<img class="avatar-lg" src="${user.avatar}" alt="Avatar de ${user.username}">`;
@@ -276,6 +376,11 @@
         document.getElementById("username").value = user.username || "";
         document.getElementById("bio").value = user.bio || "";
         document.getElementById("tag").value = user.tag || "";
+        fillTagDocs(user.tagDocs || {});
+        updateTagRequirements();
+        document.getElementById("tagStatusText").textContent = user.tag
+          ? `Etiqueta ${user.tag} en estado: ${user.tagStatus || "pendiente"}.`
+          : "Las etiquetas requieren documentacion minima.";
         document.getElementById("profileName").textContent = user.username || "Usuario";
         document.getElementById("profileBioPreview").innerHTML = `
           <span class="meta-inline">
@@ -316,7 +421,7 @@
           headers: authHeaders({
             "Content-Type": "application/json",
           }),
-          body: JSON.stringify({ username, bio, tag }),
+          body: JSON.stringify({ username, bio, tag, ...collectTagDocs() }),
         });
 
         if (!response.ok) {

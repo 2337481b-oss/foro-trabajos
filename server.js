@@ -75,6 +75,17 @@ const userSchema = new Schema(
     avatar: { type: String, default: "" },
     bio: { type: String, default: "" },
     tag: { type: String, enum: ["Empresa", "Estudiante", "Indie", ""], default: "" },
+    tagStatus: { type: String, enum: ["", "pendiente", "validada"], default: "" },
+    tagDocs: {
+      organizationName: { type: String, default: "" },
+      website: { type: String, default: "" },
+      registryId: { type: String, default: "" },
+      institution: { type: String, default: "" },
+      studentId: { type: String, default: "" },
+      portfolioUrl: { type: String, default: "" },
+      workArea: { type: String, default: "" },
+      evidenceNote: { type: String, default: "" },
+    },
     resumeUrl: { type: String, default: "" },
     resumeType: { type: String, default: "" },
     resumeName: { type: String, default: "" },
@@ -252,12 +263,15 @@ function serializeUser(user, options = {}) {
     avatar: user.avatar || "",
     bio: user.bio || "",
     tag: user.tag || "",
+    tagStatus: user.tagStatus || "",
+    resumeUrl: user.resumeUrl || "",
+    resumeType: user.resumeType || "",
+    resumeName: user.resumeName || "",
   };
 
   if (options.includePrivate) {
-    serializedUser.resumeUrl = user.resumeUrl || "";
-    serializedUser.resumeType = user.resumeType || "";
-    serializedUser.resumeName = user.resumeName || "";
+    serializedUser.privateProfile = true;
+    serializedUser.tagDocs = user.tagDocs || {};
   }
 
   return serializedUser;
@@ -288,6 +302,67 @@ function isValidEmail(email) {
 
 function isStrongPassword(password) {
   return password.length >= 6 && /[A-Z]/.test(password) && /[0-9]/.test(password);
+}
+
+function normalizeUrl(value) {
+  const url = sanitizeText(value, 140);
+
+  if (!url) {
+    return "";
+  }
+
+  return /^https?:\/\//i.test(url) ? url : `https://${url}`;
+}
+
+function buildTagDocs(body = {}) {
+  return {
+    organizationName: sanitizeText(body.organizationName, 80),
+    website: normalizeUrl(body.website),
+    registryId: sanitizeText(body.registryId, 50),
+    institution: sanitizeText(body.institution, 80),
+    studentId: sanitizeText(body.studentId, 50),
+    portfolioUrl: normalizeUrl(body.portfolioUrl),
+    workArea: sanitizeText(body.workArea, 80),
+    evidenceNote: sanitizeText(body.evidenceNote, 220),
+  };
+}
+
+function validateTagRequest(tag, docs, email) {
+  if (!tag) {
+    return { tag: "", tagStatus: "", tagDocs: {} };
+  }
+
+  if (tag === "Empresa") {
+    const hasBusinessContact = docs.website || !/@(gmail|hotmail|outlook|yahoo|icloud)\./i.test(email);
+
+    if (!docs.organizationName || !docs.registryId || !docs.evidenceNote || !hasBusinessContact) {
+      return {
+        error:
+          "Para usar la etiqueta Empresa necesitas nombre de empresa, RFC/registro, sitio web o correo corporativo y descripcion de actividad.",
+      };
+    }
+  }
+
+  if (
+    tag === "Estudiante" &&
+    (!docs.institution || (!docs.studentId && !/@(edu|edu\.mx|unam|ipn|tecnm|ut|uabc|uanl|udg)/i.test(email)))
+  ) {
+    return {
+      error: "Para usar la etiqueta Estudiante necesitas institucion y matricula o correo institucional.",
+    };
+  }
+
+  if (tag === "Indie" && (!docs.portfolioUrl || !docs.workArea)) {
+    return {
+      error: "Para usar la etiqueta Indie necesitas portafolio/proyecto y area de trabajo.",
+    };
+  }
+
+  return {
+    tag,
+    tagStatus: "pendiente",
+    tagDocs: docs,
+  };
 }
 
 async function auth(req, res, next) {
@@ -403,11 +478,21 @@ app.post("/register", async (req, res) => {
     }
 
     const hashedPassword = await bcrypt.hash(password, 10);
+    const allowedTags = new Set(["Empresa", "Estudiante", "Indie", ""]);
+    const requestedTag = allowedTags.has(String(req.body.tag || "")) ? String(req.body.tag || "") : "";
+    const tagValidation = validateTagRequest(requestedTag, buildTagDocs(req.body), email);
+
+    if (tagValidation.error) {
+      return res.status(400).send(tagValidation.error);
+    }
 
     const user = await User.create({
       username,
       email,
       password: hashedPassword,
+      tag: tagValidation.tag,
+      tagStatus: tagValidation.tagStatus,
+      tagDocs: tagValidation.tagDocs,
     });
 
     const token = jwt.sign({ id: user._id }, JWT_SECRET, { expiresIn: "7d" });
@@ -574,11 +659,18 @@ app.put("/user/:id", auth, async (req, res) => {
     const bio = sanitizeText(req.body.bio, 160);
     const allowedTags = new Set(["Empresa", "Estudiante", "Indie", ""]);
     const tag = allowedTags.has(String(req.body.tag || "")) ? String(req.body.tag || "") : "";
+    const tagValidation = validateTagRequest(tag, buildTagDocs(req.body), req.user.email);
+
+    if (tagValidation.error) {
+      return res.status(400).send(tagValidation.error);
+    }
 
     await User.findByIdAndUpdate(req.params.id, {
       username: username || req.user.username,
       bio,
-      tag,
+      tag: tagValidation.tag,
+      tagStatus: tagValidation.tagStatus,
+      tagDocs: tagValidation.tagDocs,
     });
 
     res.send("Perfil actualizado");

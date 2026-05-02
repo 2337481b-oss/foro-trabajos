@@ -55,6 +55,7 @@
           <div class="profile-actions">
             <a class="button" id="messageButton" href="messages.html">Enviar mensaje</a>
           </div>
+          <div class="public-resume-card" id="publicResumeCard" style="display:none;"></div>
         </div>
       </aside>
 
@@ -138,6 +139,30 @@
       });
     }
 
+    function renderPublicResume(user) {
+      const card = document.getElementById("publicResumeCard");
+
+      if (!user.resumeUrl) {
+        card.style.display = "none";
+        card.innerHTML = "";
+        return;
+      }
+
+      card.style.display = "grid";
+      card.innerHTML = `
+        <h3 class="field-label">Curriculum</h3>
+        <p class="helper-text">${escapeHtml(user.resumeName || "CV disponible")}</p>
+        ${
+          String(user.resumeType || "").startsWith("image/")
+            ? `<img class="resume-thumb" src="${user.resumeUrl}" alt="Curriculum de ${escapeHtml(user.username)}">`
+            : ""
+        }
+        <a class="button-secondary button-block" href="${user.resumeUrl}" target="_blank" rel="noopener noreferrer">
+          Ver curriculum
+        </a>
+      `;
+    }
+
     async function refreshMessagesBadge() {
       try {
         const response = await fetch(`${API_BASE}/messages`, {
@@ -207,6 +232,7 @@
             : `messages.html?userId=${encodeURIComponent(user._id)}`;
 
         renderAvatar(user);
+        renderPublicResume(user);
 
         if (!posts.length) {
           postsContainer.innerHTML = window.UniEmpleos.renderState("Este usuario aun no ha publicado nada.");

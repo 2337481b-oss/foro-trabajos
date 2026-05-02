@@ -45,6 +45,62 @@
           <input id="confirmPassword" type="password" autocomplete="new-password" placeholder="Repite tu contrasena">
         </div>
 
+        <div class="field-group">
+          <label class="field-label" for="tag">Etiqueta inicial</label>
+          <select id="tag" onchange="updateTagRequirements()">
+            <option value="">Sin etiqueta por ahora</option>
+            <option value="Empresa">Empresa</option>
+            <option value="Estudiante">Estudiante</option>
+            <option value="Indie">Indie</option>
+          </select>
+          <span class="helper-text">Si eliges una etiqueta, pediremos datos basicos para evitar perfiles falsos.</span>
+        </div>
+
+        <div class="tag-docs-card" id="tagDocsCard" style="display:none;">
+          <h3 class="field-label" id="tagDocsTitle">Validacion de etiqueta</h3>
+          <p class="helper-text" id="tagDocsHelp"></p>
+
+          <div class="field-group tag-field tag-company">
+            <label class="field-label" for="organizationName">Nombre de empresa</label>
+            <input id="organizationName" maxlength="80" placeholder="Nombre legal o comercial">
+          </div>
+
+          <div class="field-group tag-field tag-company">
+            <label class="field-label" for="registryId">RFC o registro</label>
+            <input id="registryId" maxlength="50" placeholder="RFC, registro fiscal o identificador comercial">
+          </div>
+
+          <div class="field-group tag-field tag-company">
+            <label class="field-label" for="website">Sitio web o pagina oficial</label>
+            <input id="website" maxlength="140" placeholder="empresa.com o linkedin.com/company/...">
+          </div>
+
+          <div class="field-group tag-field tag-student">
+            <label class="field-label" for="institution">Institucion educativa</label>
+            <input id="institution" maxlength="80" placeholder="Universidad, instituto o escuela">
+          </div>
+
+          <div class="field-group tag-field tag-student">
+            <label class="field-label" for="studentId">Matricula o numero de estudiante</label>
+            <input id="studentId" maxlength="50" placeholder="Opcional si usas correo institucional">
+          </div>
+
+          <div class="field-group tag-field tag-indie">
+            <label class="field-label" for="portfolioUrl">Portafolio o proyecto</label>
+            <input id="portfolioUrl" maxlength="140" placeholder="GitHub, Behance, web personal o proyecto">
+          </div>
+
+          <div class="field-group tag-field tag-indie">
+            <label class="field-label" for="workArea">Area de trabajo</label>
+            <input id="workArea" maxlength="80" placeholder="Frontend, diseno, soporte, datos...">
+          </div>
+
+          <div class="field-group tag-field tag-company">
+            <label class="field-label" for="evidenceNote">Descripcion de actividad</label>
+            <textarea id="evidenceNote" maxlength="220" placeholder="Que hace la empresa y que tipo de oportunidades publica"></textarea>
+          </div>
+        </div>
+
         <button class="button-block" id="registerBtn" type="button" onclick="register()">Crear cuenta</button>
         <p class="status-message" id="status" aria-live="polite"></p>
 
@@ -64,6 +120,50 @@
     function showStatus(message, variant) {
       status.textContent = message;
       status.className = `status-message ${variant}`;
+    }
+
+    function updateTagRequirements() {
+      const tag = document.getElementById("tag").value;
+      const card = document.getElementById("tagDocsCard");
+      const title = document.getElementById("tagDocsTitle");
+      const help = document.getElementById("tagDocsHelp");
+
+      card.style.display = tag ? "grid" : "none";
+      document.querySelectorAll(".tag-field").forEach((field) => {
+        field.style.display = "none";
+      });
+
+      if (tag === "Empresa") {
+        title.textContent = "Validacion para Empresa";
+        help.textContent = "Requisitos: nombre de empresa, RFC/registro, sitio web o correo corporativo y descripcion de actividad.";
+        document.querySelectorAll(".tag-company").forEach((field) => (field.style.display = "grid"));
+      }
+
+      if (tag === "Estudiante") {
+        title.textContent = "Validacion para Estudiante";
+        help.textContent = "Requisitos: institucion educativa y matricula, o correo institucional.";
+        document.querySelectorAll(".tag-student").forEach((field) => (field.style.display = "grid"));
+      }
+
+      if (tag === "Indie") {
+        title.textContent = "Validacion para Indie";
+        help.textContent = "Requisitos: portafolio o proyecto publico y area principal de trabajo.";
+        document.querySelectorAll(".tag-indie").forEach((field) => (field.style.display = "grid"));
+      }
+    }
+
+    function collectTagDocs() {
+      return {
+        tag: document.getElementById("tag").value,
+        organizationName: document.getElementById("organizationName").value.trim(),
+        registryId: document.getElementById("registryId").value.trim(),
+        website: document.getElementById("website").value.trim(),
+        institution: document.getElementById("institution").value.trim(),
+        studentId: document.getElementById("studentId").value.trim(),
+        portfolioUrl: document.getElementById("portfolioUrl").value.trim(),
+        workArea: document.getElementById("workArea").value.trim(),
+        evidenceNote: document.getElementById("evidenceNote").value.trim(),
+      };
     }
 
     async function register() {
@@ -96,7 +196,7 @@
           headers: {
             "Content-Type": "application/json",
           },
-          body: JSON.stringify({ username, email, password }),
+          body: JSON.stringify({ username, email, password, ...collectTagDocs() }),
         });
 
         if (!response.ok) {

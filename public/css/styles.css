@@ -880,6 +880,30 @@ button,
   gap: 10px;
 }
 
+.tag-docs-card,
+.public-resume-card {
+  display: grid;
+  gap: 12px;
+  padding: 14px;
+  border-radius: 18px;
+  background:
+    radial-gradient(circle at top right, rgba(168, 85, 247, 0.14), transparent 42%),
+    rgba(255, 255, 255, 0.04);
+  border: 1px solid rgba(168, 85, 247, 0.18);
+}
+
+.tag-field {
+  display: grid;
+}
+
+.resume-thumb {
+  width: 100%;
+  max-height: 220px;
+  object-fit: cover;
+  border-radius: 14px;
+  border: 1px solid rgba(168, 85, 247, 0.16);
+}
+
 .profile-avatar-wrap {
   position: relative;
 }
