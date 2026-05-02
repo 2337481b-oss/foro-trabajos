@@ -7,6 +7,7 @@
   <link rel="stylesheet" href="css/styles.css">
 </head>
 <body>
+  <script src="js/app.js"></script>
   <script>
     if (!localStorage.getItem("token") || !localStorage.getItem("userId")) {
       window.location.href = "login.html";
@@ -82,10 +83,7 @@
   </div>
 
   <script>
-    const API_BASE =
-      window.location.protocol === "file:"
-        ? "https://foro-trabajos.onrender.com"
-        : window.location.origin;
+    const API_BASE = window.UniEmpleos.API_BASE;
     const token = localStorage.getItem("token");
     const currentUserId = localStorage.getItem("userId");
     const currentUsername = localStorage.getItem("username") || "Usuario";
@@ -247,7 +245,7 @@
 
     async function preloadPosts() {
       try {
-        const response = await fetch(`${API_BASE}/posts`, {
+        const response = await fetch(`${API_BASE}/posts?page=1&limit=50`, {
           headers: authHeaders(),
         });
 
@@ -255,7 +253,7 @@
           return;
         }
 
-        const posts = await response.json();
+        const posts = window.UniEmpleos.normalizeList(await response.json());
         postsMap = new Map(posts.map((post) => [post._id, post]));
       } catch (error) {
         postsMap = new Map();
@@ -576,6 +574,14 @@
         await loadConversations(true);
         await loadThread(true);
       }, 5000);
+      window.UniEmpleos.connectRealtime({
+        "message:created": async (message) => {
+          if (message.from === selectedUserId || message.to === selectedUserId) {
+            await loadThread(true);
+          }
+          await loadConversations(true);
+        },
+      });
     })();
   </script>
 </body>

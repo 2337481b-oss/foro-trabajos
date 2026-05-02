@@ -7,6 +7,7 @@
   <link rel="stylesheet" href="css/styles.css">
 </head>
 <body>
+  <script src="js/app.js"></script>
   <script>
     if (localStorage.getItem("token") && localStorage.getItem("userId")) {
       window.location.href = "index.html";
@@ -56,10 +57,7 @@
   </main>
 
   <script>
-    const API_BASE =
-      window.location.protocol === "file:"
-        ? "https://foro-trabajos.onrender.com"
-        : window.location.origin;
+    const API_BASE = window.UniEmpleos.API_BASE;
     const registerBtn = document.getElementById("registerBtn");
     const status = document.getElementById("status");
 
@@ -109,6 +107,7 @@
         localStorage.setItem("token", data.token);
         localStorage.setItem("userId", data.user._id);
         localStorage.setItem("username", data.user.username);
+        localStorage.setItem("userTag", data.user.tag || "");
 
         showStatus("Cuenta creada. Entrando al feed...", "status-success");
 

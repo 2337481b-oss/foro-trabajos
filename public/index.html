@@ -7,6 +7,7 @@
   <link rel="stylesheet" href="css/styles.css">
 </head>
 <body>
+  <script src="js/app.js"></script>
   <script>
     if (!localStorage.getItem("token") || !localStorage.getItem("userId")) {
       window.location.href = "login.html";
@@ -77,10 +78,7 @@
   </div>
 
   <script>
-    const API_BASE =
-      window.location.protocol === "file:"
-        ? "https://foro-trabajos.onrender.com"
-        : window.location.origin;
+    const API_BASE = window.UniEmpleos.API_BASE;
     const token = localStorage.getItem("token");
     const currentUserId = localStorage.getItem("userId");
     const currentUsername = localStorage.getItem("username") || "Usuario";
@@ -198,6 +196,14 @@
         .replace(/'/g, "&#39;");
     }
 
+    function normalizeList(response) {
+      return window.UniEmpleos.normalizeList(response);
+    }
+
+    function renderState(message, variant = "") {
+      return window.UniEmpleos.renderState(message, variant);
+    }
+
     function getInitials(name) {
       return String(name || "U")
         .split(" ")
@@ -244,11 +250,11 @@
       const activePostId = activeInputId.startsWith("input-") ? activeInputId.replace("input-", "") : "";
 
       if (showLoader) {
-        postsContainer.innerHTML = '<section class="panel empty-state">Cargando publicaciones...</section>';
+        postsContainer.innerHTML = `<section class="panel">${renderState("Cargando publicaciones...")}</section>`;
       }
 
       try {
-        const response = await fetch(`${API_BASE}/posts`, {
+        const response = await fetch(`${API_BASE}/posts?page=1&limit=20`, {
           headers: authHeaders(),
         });
 
@@ -256,14 +262,12 @@
           throw new Error("No fue posible cargar las publicaciones");
         }
 
-        const posts = await response.json();
+        const posts = normalizeList(await response.json());
         postCount.textContent = posts.length;
 
         if (!posts.length) {
           postsContainer.innerHTML = `
-            <section class="panel empty-state">
-              Aun no hay publicaciones. La primera puede ser tuya.
-            </section>
+            <section class="panel">${renderState("Aun no hay publicaciones. La primera puede ser tuya.")}</section>
           `;
           return;
         }
@@ -296,9 +300,7 @@
         }
       } catch (error) {
         postsContainer.innerHTML = `
-          <section class="panel empty-state">
-            ${escapeHtml(error.message || "Error al cargar publicaciones")}
-          </section>
+          <section class="panel">${renderState(error.message || "Error al cargar publicaciones", "state-error")}</section>
         `;
       }
     }
@@ -457,13 +459,13 @@
       const hasExistingComments = list.children.length > 0 && !list.querySelector(".empty-state");
 
       if (!hasExistingComments) {
-        list.innerHTML = '<div class="empty-state">Cargando comentarios...</div>';
+        list.innerHTML = renderState("Cargando comentarios...");
       } else {
         list.classList.add("updating");
       }
 
       try {
-        const response = await fetch(`${API_BASE}/comments/${postId}`, {
+        const response = await fetch(`${API_BASE}/comments/${postId}?page=1&limit=30`, {
           headers: authHeaders(),
         });
 
@@ -471,10 +473,10 @@
           throw new Error("No fue posible cargar comentarios");
         }
 
-        const comments = await response.json();
+        const comments = normalizeList(await response.json());
 
         if (!comments.length) {
-          list.innerHTML = '<div class="empty-state">Todavia no hay comentarios en esta publicacion.</div>';
+          list.innerHTML = renderState("Todavia no hay comentarios en esta publicacion.");
           list.classList.remove("updating");
           return;
         }
@@ -493,7 +495,7 @@
         list.scrollTop = previousScrollTop;
         list.classList.remove("updating");
       } catch (error) {
-        list.innerHTML = `<div class="empty-state">${escapeHtml(error.message)}</div>`;
+        list.innerHTML = renderState(error.message || "Error al cargar comentarios", "state-error");
         list.classList.remove("updating");
       }
     }
@@ -545,6 +547,28 @@
 
     loadPosts();
     refreshMessagesBadge();
+    window.UniEmpleos.connectRealtime({
+      "post:created": () => {
+        if (openComments.size === 0) loadPosts(false);
+      },
+      "post:deleted": () => {
+        if (openComments.size === 0) loadPosts(false);
+      },
+      "post:liked": (data) => {
+        const likes = document.getElementById(`likes-${data.postId}`);
+        if (likes) likes.textContent = data.likes;
+      },
+      "comment:created": (comment) => {
+        if (String(comment.userId) === String(currentUserId)) {
+          return;
+        }
+
+        const count = document.getElementById(`count-${comment.postId}`);
+        if (count) count.textContent = Number(count.textContent || 0) + 1;
+        if (openComments.has(comment.postId)) loadComments(comment.postId);
+      },
+      "message:created": refreshMessagesBadge,
+    });
     document.addEventListener("keydown", (event) => {
       const target = event.target;
       if (!target || !target.id || !target.id.startsWith("input-")) {

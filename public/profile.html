@@ -7,6 +7,7 @@
   <link rel="stylesheet" href="css/styles.css">
 </head>
 <body>
+  <script src="js/app.js"></script>
   <script>
     if (!localStorage.getItem("token") || !localStorage.getItem("userId")) {
       window.location.href = "login.html";
@@ -115,10 +116,7 @@
   </div>
 
   <script>
-    const API_BASE =
-      window.location.protocol === "file:"
-        ? "https://foro-trabajos.onrender.com"
-        : window.location.origin;
+    const API_BASE = window.UniEmpleos.API_BASE;
     const token = localStorage.getItem("token");
     const currentUserId = localStorage.getItem("userId");
     const menuShell = document.getElementById("menuShell");
@@ -261,7 +259,7 @@
           fetch(`${API_BASE}/user/${currentUserId}`, {
             headers: authHeaders(),
           }),
-          fetch(`${API_BASE}/posts/user/${currentUserId}`, {
+          fetch(`${API_BASE}/posts/user/${currentUserId}?page=1&limit=30`, {
             headers: authHeaders(),
           }),
         ]);
@@ -271,7 +269,9 @@
         }
 
         const user = await userResponse.json();
-        const posts = postsResponse.ok ? await postsResponse.json() : [];
+        const posts = postsResponse.ok
+          ? window.UniEmpleos.normalizeList(await postsResponse.json())
+          : [];
 
         document.getElementById("username").value = user.username || "";
         document.getElementById("bio").value = user.bio || "";

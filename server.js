@@ -1,6 +1,7 @@
 require("dotenv").config();
 
 const express = require("express");
+const http = require("http");
 const mongoose = require("mongoose");
 const cors = require("cors");
 const path = require("path");
@@ -11,9 +12,22 @@ const { CloudinaryStorage } = require("multer-storage-cloudinary");
 const cloudinary = require("cloudinary").v2;
 
 const app = express();
+const server = http.createServer(app);
 
 const JWT_SECRET = process.env.JWT_SECRET || "change-this-secret";
 const CLIENT_ORIGIN = process.env.CLIENT_ORIGIN;
+const MAX_PAGE_SIZE = 50;
+const IMAGE_MIME_TYPES = new Set(["image/jpeg", "image/png", "image/webp"]);
+const RESUME_MIME_TYPES = new Set([
+  "application/pdf",
+  "image/jpeg",
+  "image/png",
+  "image/webp",
+  "application/msword",
+  "application/vnd.openxmlformats-officedocument.wordprocessingml.document",
+]);
+
+const realtimeClients = new Set();
 
 app.use(express.json({ limit: "2mb" }));
 app.use(
@@ -83,6 +97,12 @@ const messageSchema = new Schema(
   { timestamps: true }
 );
 
+postSchema.index({ createdAt: -1, _id: -1 });
+postSchema.index({ userId: 1, createdAt: -1 });
+commentSchema.index({ postId: 1, createdAt: -1 });
+messageSchema.index({ from: 1, to: 1, createdAt: -1 });
+messageSchema.index({ to: 1, from: 1, createdAt: -1 });
+
 const User = mongoose.models.User || mongoose.model("User", userSchema);
 const Post = mongoose.models.Post || mongoose.model("Post", postSchema);
 const Comment = mongoose.models.Comment || mongoose.model("Comment", commentSchema);
@@ -101,6 +121,9 @@ const upload = multer({
   limits: {
     fileSize: 5 * 1024 * 1024,
   },
+  fileFilter: (req, file, cb) => {
+    cb(null, IMAGE_MIME_TYPES.has(file.mimetype));
+  },
 });
 
 const uploadResume = multer({
@@ -108,11 +131,50 @@ const uploadResume = multer({
   limits: {
     fileSize: 8 * 1024 * 1024,
   },
+  fileFilter: (req, file, cb) => {
+    cb(null, RESUME_MIME_TYPES.has(file.mimetype));
+  },
 });
 
 function getTokenFromRequest(req) {
   const authHeader = req.headers.authorization || "";
   return authHeader.startsWith("Bearer ") ? authHeader.slice(7) : authHeader;
+}
+
+function emitRealtime(eventName, payload, targetUserIds = null) {
+  const targetSet = targetUserIds ? new Set(targetUserIds.map(String)) : null;
+  const eventPayload = `event: ${eventName}\ndata: ${JSON.stringify(payload)}\n\n`;
+
+  for (const client of realtimeClients) {
+    if (!targetSet || targetSet.has(String(client.userId))) {
+      client.res.write(eventPayload);
+    }
+  }
+}
+
+function parsePagination(req, defaults = {}) {
+  const page = Math.max(parseInt(req.query.page || defaults.page || "1", 10), 1);
+  const rawLimit = parseInt(req.query.limit || defaults.limit || "20", 10);
+  const limit = Math.min(Math.max(rawLimit || 20, 1), MAX_PAGE_SIZE);
+  const skip = (page - 1) * limit;
+
+  return { page, limit, skip };
+}
+
+function shouldReturnPaginated(req) {
+  return "page" in req.query || "limit" in req.query;
+}
+
+function paginatedResponse(items, total, pagination) {
+  return {
+    items,
+    pagination: {
+      page: pagination.page,
+      limit: pagination.limit,
+      total,
+      pages: Math.ceil(total / pagination.limit),
+    },
+  };
 }
 
 function serializeUser(user, options = {}) {
@@ -326,6 +388,36 @@ app.post("/login", async (req, res) => {
   }
 });
 
+app.get("/events", (req, res) => {
+  res.setHeader("Content-Type", "text/event-stream");
+  res.setHeader("Cache-Control", "no-cache");
+  res.setHeader("Connection", "keep-alive");
+  res.flushHeaders?.();
+
+  let userId = "";
+  const token = String(req.query.token || "");
+
+  if (token) {
+    try {
+      userId = String(jwt.verify(token, JWT_SECRET).id);
+    } catch (error) {
+      userId = "";
+    }
+  }
+
+  const client = { res, userId };
+  realtimeClients.add(client);
+  res.write(`event: connected\ndata: {"ok":true}\n\n`);
+  const keepAlive = setInterval(() => {
+    res.write(`event: ping\ndata: {"ok":true}\n\n`);
+  }, 25000);
+
+  req.on("close", () => {
+    clearInterval(keepAlive);
+    realtimeClients.delete(client);
+  });
+});
+
 app.get("/user/:id", async (req, res) => {
   try {
     const user = await User.findById(req.params.id).select("-password").lean();
@@ -445,6 +537,7 @@ app.post("/post", auth, upload.single("media"), async (req, res) => {
     });
 
     const [responsePost] = await buildPostsResponse([post], String(req.user._id));
+    emitRealtime("post:created", responsePost);
     res.status(201).json(responsePost);
   } catch (error) {
     res.status(500).send("Error al publicar");
@@ -453,6 +546,7 @@ app.post("/post", auth, upload.single("media"), async (req, res) => {
 
 app.get("/posts", async (req, res) => {
   try {
+    const pagination = parsePagination(req, { limit: 20 });
     const token = getTokenFromRequest(req);
     let currentUserId = "";
 
@@ -464,10 +558,12 @@ app.get("/posts", async (req, res) => {
       }
     }
 
-    const posts = await Post.find().sort({ createdAt: -1, _id: -1 }).limit(50).lean();
+    const query = Post.find().sort({ createdAt: -1, _id: -1 });
+    const total = shouldReturnPaginated(req) ? await Post.countDocuments() : 0;
+    const posts = await query.skip(pagination.skip).limit(pagination.limit).lean();
     const response = await buildPostsResponse(posts, currentUserId);
 
-    res.json(response);
+    res.json(shouldReturnPaginated(req) ? paginatedResponse(response, total, pagination) : response);
   } catch (error) {
     res.status(500).send("Error al obtener publicaciones");
   }
@@ -475,14 +571,49 @@ app.get("/posts", async (req, res) => {
 
 app.get("/posts/user/:userId", async (req, res) => {
   try {
-    const posts = await Post.find({ userId: req.params.userId })
+    const pagination = parsePagination(req, { limit: 20 });
+    const query = { userId: req.params.userId };
+    const total = shouldReturnPaginated(req) ? await Post.countDocuments(query) : 0;
+    const posts = await Post.find(query)
       .sort({ createdAt: -1, _id: -1 })
+      .skip(pagination.skip)
+      .limit(pagination.limit)
       .lean();
 
     const response = await buildPostsResponse(posts, req.params.userId);
-    res.json(response);
+    res.json(shouldReturnPaginated(req) ? paginatedResponse(response, total, pagination) : response);
   } catch (error) {
     res.status(500).send("Error al obtener posts");
+  }
+});
+
+app.get("/post/:id", async (req, res) => {
+  try {
+    if (!mongoose.Types.ObjectId.isValid(req.params.id)) {
+      return res.status(400).send("Publicacion no valida");
+    }
+
+    const token = getTokenFromRequest(req);
+    let currentUserId = "";
+
+    if (token) {
+      try {
+        currentUserId = String(jwt.verify(token, JWT_SECRET).id);
+      } catch (error) {
+        currentUserId = "";
+      }
+    }
+
+    const post = await Post.findById(req.params.id).lean();
+
+    if (!post) {
+      return res.status(404).send("Publicacion no encontrada");
+    }
+
+    const [responsePost] = await buildPostsResponse([post], currentUserId);
+    res.json(responsePost);
+  } catch (error) {
+    res.status(500).send("Error al obtener publicacion");
   }
 });
 
@@ -509,6 +640,12 @@ app.post("/like/:id", auth, async (req, res) => {
     post.likesUsers.push(currentUserId);
     post.likes += 1;
     await post.save();
+
+    emitRealtime("post:liked", {
+      postId: String(post._id),
+      likes: post.likes,
+      userId: currentUserId,
+    });
 
     res.json({
       likes: post.likes,
@@ -543,6 +680,7 @@ app.delete("/post/:id", auth, async (req, res) => {
       Message.deleteMany({ postId: req.params.id }),
     ]);
 
+    emitRealtime("post:deleted", { postId: req.params.id });
     res.send("Post eliminado");
   } catch (error) {
     res.status(500).send("Error al eliminar");
@@ -570,7 +708,7 @@ app.post("/comment", auth, async (req, res) => {
       content,
     });
 
-    res.status(201).json({
+    const responseComment = {
       _id: String(comment._id),
       postId,
       userId: String(req.user._id),
@@ -578,7 +716,10 @@ app.post("/comment", auth, async (req, res) => {
       content: comment.content,
       createdAt: comment.createdAt,
       isOwnComment: true,
-    });
+    };
+
+    emitRealtime("comment:created", responseComment);
+    res.status(201).json(responseComment);
   } catch (error) {
     res.status(500).send("Error al comentar");
   }
@@ -586,21 +727,25 @@ app.post("/comment", auth, async (req, res) => {
 
 app.get("/comments/:postId", async (req, res) => {
   try {
+    const pagination = parsePagination(req, { limit: 50 });
+    const query = { postId: req.params.postId };
+    const total = shouldReturnPaginated(req) ? await Comment.countDocuments(query) : 0;
     const comments = await Comment.find({ postId: req.params.postId })
       .sort({ createdAt: -1, _id: -1 })
-      .limit(50)
+      .skip(pagination.skip)
+      .limit(pagination.limit)
       .lean();
 
-    res.json(
-      comments.map((comment) => ({
+    const response = comments.map((comment) => ({
         _id: String(comment._id),
         postId: comment.postId,
         userId: comment.userId,
         username: comment.username,
         content: comment.content,
         createdAt: comment.createdAt,
-      }))
-    );
+      }));
+
+    res.json(shouldReturnPaginated(req) ? paginatedResponse(response, total, pagination) : response);
   } catch (error) {
     res.status(500).send("Error al obtener comentarios");
   }
@@ -617,11 +762,13 @@ app.get("/comments-count/:postId", async (req, res) => {
 
 app.get("/messages", auth, async (req, res) => {
   try {
+    const pagination = parsePagination(req, { limit: 100 });
     const currentUserId = String(req.user._id);
     const messages = await Message.find({
       $or: [{ from: currentUserId }, { to: currentUserId }],
     })
       .sort({ createdAt: -1, _id: -1 })
+      .limit(pagination.limit * 3)
       .lean();
 
     const latestByUser = new Map();
@@ -655,6 +802,7 @@ app.get("/messages", auth, async (req, res) => {
 
 app.get("/messages/:userId", auth, async (req, res) => {
   try {
+    const pagination = parsePagination(req, { limit: 100 });
     const currentUserId = String(req.user._id);
     const partnerId = String(req.params.userId);
 
@@ -671,7 +819,8 @@ app.get("/messages/:userId", auth, async (req, res) => {
         ],
       })
         .sort({ createdAt: 1, _id: 1 })
-        .limit(100)
+        .skip(pagination.skip)
+        .limit(pagination.limit)
         .lean(),
     ]);
 
@@ -725,7 +874,9 @@ app.post("/message", auth, async (req, res) => {
       [to, recipient],
     ]);
 
-    res.status(201).json(buildMessageResponse(message.toObject(), currentUserId, usersMap));
+    const responseMessage = buildMessageResponse(message.toObject(), currentUserId, usersMap);
+    emitRealtime("message:created", responseMessage, [currentUserId, to]);
+    res.status(201).json(responseMessage);
   } catch (error) {
     res.status(500).send("Error al enviar mensaje");
   }
@@ -735,6 +886,6 @@ app.get("/", (req, res) => {
   res.sendFile(path.join(__dirname, "public", "index.html"));
 });
 
-app.listen(process.env.PORT || 3000, () => {
+server.listen(process.env.PORT || 3000, () => {
   console.log("Servidor corriendo");
 });

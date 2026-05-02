@@ -7,6 +7,7 @@
   <link rel="stylesheet" href="css/styles.css">
 </head>
 <body>
+  <script src="js/app.js"></script>
   <script>
     if (!localStorage.getItem("token") || !localStorage.getItem("userId")) {
       window.location.href = "login.html";
@@ -72,10 +73,7 @@
   </div>
 
   <script>
-    const API_BASE =
-      window.location.protocol === "file:"
-        ? "https://foro-trabajos.onrender.com"
-        : window.location.origin;
+    const API_BASE = window.UniEmpleos.API_BASE;
     const token = localStorage.getItem("token");
     const currentUserId = localStorage.getItem("userId");
     const postId = new URLSearchParams(window.location.search).get("postId");
@@ -92,12 +90,7 @@
     let commentsInterval = null;
     let commentDraft = "";
 
-    userChip.innerHTML = `
-      <span class="user-chip-text">
-        <span>${localStorage.getItem("username") || "Usuario"}</span>
-        ${localStorage.getItem("userTag") ? `<span class="tag-badge">${localStorage.getItem("userTag")}</span>` : ""}
-      </span>
-    `;
+    setUserChip(localStorage.getItem("username") || "Usuario", localStorage.getItem("userTag") || "");
 
     function toggleMobileNav() {
       menuShell.classList.toggle("mobile-open");
@@ -149,6 +142,27 @@
         .replace(/>/g, "&gt;")
         .replace(/"/g, "&quot;")
         .replace(/'/g, "&#39;");
+    }
+
+    function renderTag(tag) {
+      return tag ? `<span class="tag-badge">${escapeHtml(tag)}</span>` : "";
+    }
+
+    function setUserChip(username, tag = "") {
+      userChip.innerHTML = `
+        <span class="user-chip-text">
+          <span>${escapeHtml(username || "Usuario")}</span>
+          ${renderTag(tag)}
+        </span>
+      `;
+    }
+
+    function normalizeList(response) {
+      return window.UniEmpleos.normalizeList(response);
+    }
+
+    function renderState(message, variant = "") {
+      return window.UniEmpleos.renderState(message, variant);
     }
 
     async function refreshMessagesBadge() {
@@ -211,7 +225,7 @@
 
     async function loadPost() {
       try {
-        const response = await fetch(`${API_BASE}/posts`, {
+        const response = await fetch(`${API_BASE}/post/${postId}`, {
           headers: authHeaders(),
         });
 
@@ -219,11 +233,10 @@
           throw new Error("No se pudo cargar la publicacion");
         }
 
-        const posts = await response.json();
-        const post = posts.find((item) => item._id === postId);
+        const post = await response.json();
 
         if (!post) {
-          postCard.innerHTML = '<div class="post-copy"><p class="empty-state">La publicacion no existe o fue eliminada.</p></div>';
+          postCard.innerHTML = `<div class="post-copy">${renderState("La publicacion no existe o fue eliminada.")}</div>`;
           return;
         }
 
@@ -258,7 +271,7 @@
           </div>
         `;
       } catch (error) {
-        postCard.innerHTML = `<div class="post-copy"><p class="empty-state">${escapeHtml(error.message)}</p></div>`;
+        postCard.innerHTML = `<div class="post-copy">${renderState(error.message || "Error al cargar publicacion", "state-error")}</div>`;
       }
     }
 
@@ -269,13 +282,13 @@
         commentsContainer.children.length > 0 && !commentsContainer.querySelector(".empty-state");
 
       if (!hasExistingComments) {
-        commentsContainer.innerHTML = '<div class="empty-state">Cargando comentarios...</div>';
+        commentsContainer.innerHTML = renderState("Cargando comentarios...");
       } else {
         commentsContainer.classList.add("updating");
       }
 
       try {
-        const response = await fetch(`${API_BASE}/comments/${postId}`, {
+        const response = await fetch(`${API_BASE}/comments/${postId}?page=1&limit=50`, {
           headers: authHeaders(),
         });
 
@@ -283,10 +296,10 @@
           throw new Error("No se pudieron cargar los comentarios");
         }
 
-        const comments = await response.json();
+        const comments = normalizeList(await response.json());
 
         if (!comments.length) {
-          commentsContainer.innerHTML = '<div class="empty-state">Todavia no hay comentarios en esta publicacion.</div>';
+          commentsContainer.innerHTML = renderState("Todavia no hay comentarios en esta publicacion.");
           commentsContainer.classList.remove("updating");
           return;
         }
@@ -314,7 +327,7 @@
           commentInput.setSelectionRange(commentInput.value.length, commentInput.value.length);
         }
       } catch (error) {
-        commentsContainer.innerHTML = `<div class="empty-state">${escapeHtml(error.message)}</div>`;
+        commentsContainer.innerHTML = renderState(error.message || "Error al cargar comentarios", "state-error");
         commentsContainer.classList.remove("updating");
       }
     }
@@ -375,6 +388,12 @@
       loadComments();
       refreshMessagesBadge();
     }, 10000);
+    window.UniEmpleos.connectRealtime({
+      "comment:created": (comment) => {
+        if (comment.postId === postId) loadComments();
+      },
+      "message:created": refreshMessagesBadge,
+    });
   </script>
 </body>
 </html>
