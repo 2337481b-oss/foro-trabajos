@@ -790,6 +790,13 @@ button,
     rgba(255, 255, 255, 0.04);
 }
 
+.push-card.push-fallback {
+  border-color: rgba(251, 191, 36, 0.34);
+  background:
+    radial-gradient(circle at top right, rgba(251, 191, 36, 0.13), transparent 38%),
+    rgba(255, 255, 255, 0.04);
+}
+
 .push-card.push-disabled {
   opacity: 0.72;
 }

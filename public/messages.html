@@ -257,8 +257,13 @@
         }
 
         pushCard.classList.toggle("push-active", state.subscribed);
+        pushCard.classList.toggle("push-fallback", Boolean(state.fallback));
         pushCard.classList.remove("push-disabled");
-        pushToggleBtn.textContent = state.subscribed ? "Desactivar" : "Activar";
+        pushToggleBtn.textContent = state.subscribed
+          ? state.fallback
+            ? "Avisos locales"
+            : "Desactivar"
+          : "Activar";
         pushToggleBtn.disabled = false;
       } catch (error) {
         pushCard.classList.add("push-disabled");
@@ -282,14 +287,46 @@
           await window.UniEmpleos.unsubscribeFromPush();
           showStatus("Notificaciones desactivadas.", "status-info");
         } else {
-          await window.UniEmpleos.subscribeToPush();
-          showStatus("Notificaciones activadas para mensajes.", "status-success");
+          const result = await window.UniEmpleos.subscribeToPush();
+          showStatus(
+            result?.fallback
+              ? "Tu navegador bloqueo Web Push. Active avisos mientras UniEmpleos este abierto."
+              : "Notificaciones activadas para mensajes.",
+            "status-success"
+          );
         }
       } catch (error) {
         showStatus(error.message || "No se pudieron configurar las notificaciones.", "status-error");
       }
 
       await refreshPushButton();
+    }
+
+    function showLocalMessageNotification(message) {
+      const fallbackEnabled = localStorage.getItem("pushFallbackEnabled") === "true";
+
+      if (
+        !fallbackEnabled ||
+        !("Notification" in window) ||
+        Notification.permission !== "granted" ||
+        String(message.to) !== String(currentUserId) ||
+        String(message.from) === String(currentUserId) ||
+        document.visibilityState === "visible"
+      ) {
+        return;
+      }
+
+      const sender = message.fromUser?.username || "UniEmpleos";
+      const notification = new Notification(`Nuevo mensaje de ${sender}`, {
+        body: message.content || "Tienes un mensaje nuevo.",
+        icon: "/icons/uniempleos-push.svg",
+        tag: `message-${message.from}`,
+      });
+
+      notification.onclick = () => {
+        window.focus();
+        window.location.href = `messages.html?userId=${encodeURIComponent(message.from)}`;
+      };
     }
 
     function getPostLabel(postId) {
@@ -635,6 +672,7 @@
       }, 5000);
       window.UniEmpleos.connectRealtime({
         "message:created": async (message) => {
+          showLocalMessageNotification(message);
           if (message.from === selectedUserId || message.to === selectedUserId) {
             await loadThread(true);
           }

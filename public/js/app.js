@@ -126,8 +126,14 @@
   }
 
   async function getPushSubscriptionState() {
+    const fallbackEnabled = localStorage.getItem("pushFallbackEnabled") === "true";
+
     if (!("serviceWorker" in navigator) || !("PushManager" in window)) {
-      return { supported: false, subscribed: false };
+      return {
+        supported: Boolean("Notification" in window),
+        subscribed: fallbackEnabled,
+        fallback: fallbackEnabled,
+      };
     }
 
     const registration = await registerServiceWorker();
@@ -135,20 +141,26 @@
 
     return {
       supported: true,
-      subscribed: Boolean(subscription),
+      subscribed: Boolean(subscription) || fallbackEnabled,
+      fallback: !subscription && fallbackEnabled,
       subscription,
     };
   }
 
   async function subscribeToPush() {
-    if (!("Notification" in window) || !("PushManager" in window)) {
-      throw new Error("Tu navegador no permite Web Push.");
+    if (!("Notification" in window)) {
+      throw new Error("Tu navegador no permite notificaciones.");
     }
 
     const permission = await Notification.requestPermission();
 
     if (permission !== "granted") {
       throw new Error("Permiso de notificaciones rechazado.");
+    }
+
+    if (!("PushManager" in window) || !("serviceWorker" in navigator)) {
+      localStorage.setItem("pushFallbackEnabled", "true");
+      return { fallback: true };
     }
 
     const keyData = await apiFetch("/push/public-key", {
@@ -159,27 +171,42 @@
       throw new Error("Faltan las llaves VAPID en el servidor.");
     }
 
-    const registration = await registerServiceWorker();
-    const subscription =
-      (await registration.pushManager.getSubscription()) ||
-      (await registration.pushManager.subscribe({
-        userVisibleOnly: true,
-        applicationServerKey: urlBase64ToUint8Array(keyData.publicKey),
-      }));
+    try {
+      const registration = await registerServiceWorker();
+      const subscription =
+        (await registration.pushManager.getSubscription()) ||
+        (await registration.pushManager.subscribe({
+          userVisibleOnly: true,
+          applicationServerKey: urlBase64ToUint8Array(keyData.publicKey),
+        }));
 
-    await apiFetch("/push/subscribe", {
-      method: "POST",
-      headers: authHeaders({
-        "Content-Type": "application/json",
-      }),
-      body: JSON.stringify({ subscription }),
-    });
+      await apiFetch("/push/subscribe", {
+        method: "POST",
+        headers: authHeaders({
+          "Content-Type": "application/json",
+        }),
+        body: JSON.stringify({ subscription }),
+      });
 
-    return subscription;
+      localStorage.removeItem("pushFallbackEnabled");
+      return subscription;
+    } catch (error) {
+      const message = String(error.message || error);
+      const canUseLocalNotifications = Notification.permission === "granted";
+
+      if (canUseLocalNotifications && /push service|registration failed|abort/i.test(message)) {
+        localStorage.setItem("pushFallbackEnabled", "true");
+        return { fallback: true };
+      }
+
+      throw error;
+    }
   }
 
   async function unsubscribeFromPush() {
     const state = await getPushSubscriptionState();
+
+    localStorage.removeItem("pushFallbackEnabled");
 
     if (!state.subscription) {
       return;
